@@ -1,0 +1,309 @@
+# Shared Web Calendar
+
+A simple, collaborative web calendar where multiple users can add and edit entries for each day. Includes user authentication and admin panel for user management.
+
+## Features
+
+- 📅 Clean, interactive monthly calendar view
+- ✏️ Multiple entries per day
+- 👥 Multi-user support with authentication
+- 🔐 Secure login system with password hashing
+- 🔧 Admin panel for user management
+- 📱 Responsive design (works on mobile and desktop)
+- 💾 Simple JSON file storage (no database needed)
+- 🚀 Easy to deploy on any Apache server with PHP
+
+## Requirements
+
+- Web server with PHP 7.0 or higher (Apache, Nginx, etc.)
+- Write permissions for the `data` directory
+
+## Installation
+
+### Option 1: Self-Hosted Apache Server
+
+1. **Upload files to your Apache server:**
+   ```
+   /var/www/html/calendar/
+   ├── index.html
+   ├── login.html
+   ├── admin.html
+   ├── styles.css
+   ├── script.js
+   ├── api.php
+   ├── auth.php
+   ├── users.php
+   └── data/
+       ├── events.json
+       ├── users.json
+       └── .htaccess
+   ```
+
+2. **Set proper permissions:**
+   ```bash
+   chmod 755 /var/www/html/calendar
+   chmod 755 /var/www/html/calendar/data
+   chmod 666 /var/www/html/calendar/data/events.json
+   chmod 666 /var/www/html/calendar/data/users.json
+   ```
+
+3. **First login:**
+   - Open `http://your-domain.com/calendar/login.html`
+   - Login with default admin credentials:
+     - **Username:** `admin`
+     - **Password:** `admin123`
+   - **IMPORTANT:** Change the admin password immediately!
+
+### Option 2: Free Hosting Platforms
+
+#### InfinityFree (Recommended - 100% Free)
+1. Sign up at https://infinityfree.net
+2. Create a new account
+3. Upload all files via File Manager or FTP
+4. Make sure the `data` directory has write permissions
+5. Access via your free subdomain (e.g., `yourname.infinityfreeapp.com`)
+
+#### 000webhost
+1. Sign up at https://www.000webhost.com
+2. Create a new website
+3. Upload files to `public_html` directory
+4. Set permissions for `data` directory
+5. Access via your free subdomain
+
+#### Awardspace
+1. Sign up at https://www.awardspace.com
+2. Upload files via File Manager
+3. Ensure `data` directory is writable
+4. Access via your free domain
+
+## Configuration
+
+### Security Considerations
+
+For production use, consider adding:
+
+1. **Change default password** - Change the admin password immediately after first login
+2. **HTTPS** - Use SSL/TLS encryption for production deployment
+3. **Regular backups** - Regularly backup both `events.json` and `users.json` files
+4. **File permissions** - Ensure data directory is not publicly accessible (use .htaccess)
+
+## User Management
+
+### Default Admin Account
+
+- **Username:** `admin`
+- **Password:** `admin123`
+- **⚠️ CRITICAL:** Change this password immediately after first login!
+
+### Managing Users (Admin Only)
+
+1. **Login as admin** and navigate to the Admin Panel
+2. **Add User:**
+   - Enter username (3-20 characters, letters/numbers/underscore)
+   - Enter full name
+   - Either type a password or click "Generate" for a secure random password
+   - Check "Administrator privileges" to make them an admin
+   - Click "Add User"
+   - **Save the generated password** - it won't be shown again!
+
+3. **Change Password:**
+   - Select user from dropdown
+   - Enter new password or generate one
+   - Click "Change Password"
+
+4. **Delete User:**
+   - Find user in the user list
+   - Click "Delete" button
+   - Confirm deletion
+   - Note: You cannot delete your own account
+
+### Password Requirements
+
+- Minimum 6 characters
+- Mix of letters, numbers, and special characters recommended
+- Use the password generator for strong passwords
+
+### User Roles
+
+- **Admin:** Can manage users, access admin panel, and use calendar
+- **User:** Can only use calendar (add/edit/delete entries)
+
+### Customize Appearance
+
+Edit [styles.css](styles.css) to change colors, fonts, and layout:
+- Main colors are defined with gradient: `#667eea` and `#764ba2`
+- Change calendar grid size by adjusting `.calendar-day min-height`
+
+## File Structure
+
+```
+calendar/
+├── index.html          # Main calendar interface (requires login)
+├── login.html          # User login page
+├── admin.html          # Admin panel for user management
+├── styles.css          # All styling and responsive design
+├── script.js           # Frontend JavaScript (calendar logic, UI interactions)
+├── api.php            # Backend PHP API (handles calendar data)
+├── auth.php           # Authentication system (login/logout/sessions)
+├── users.php          # User management API (add/delete/change passwords)
+├── data/              # Data storage directory
+│   ├── events.json    # JSON file storing all calendar events
+│   ├── users.json     # JSON file storing user accounts
+│   └── .htaccess      # Security configuration for data directory
+└── README.md          # This file
+```
+
+## Usage
+
+### Logging In
+
+1. Navigate to `login.html`
+2. Enter your username and password
+3. Click "Login"
+4. Admins will be redirected to admin panel, users to calendar
+
+### Adding an Entry
+
+1. Click on any day in the calendar
+2. Fill out the form:
+   - **Title**: Brief description of the event
+   - **Description**: Optional detailed information
+   - **Your Name**: Auto-filled with your name
+3. Click "Save"
+
+### Viewing Entries
+
+- Days with entries show preview badges
+- Number badge shows total entries if more than 2
+- Click on a day to see all entries
+
+### Deleting an Entry
+
+1. Click on the day with the entry
+2. Find the entry in the list
+3. Click "Delete" button
+4. Confirm the deletion
+
+## Troubleshooting
+
+### Entries not saving
+
+1. Check that the `data` directory exists and is writable:
+   ```bash
+   chmod 755 data
+   chmod 666 data/events.json
+   chmod 666 data/users.json
+   ```
+
+2. Verify PHP is working by accessing `api.php?action=get` directly
+
+3. Check browser console for JavaScript errors
+
+### Cannot login / Authentication errors
+
+1. Verify `users.json` file exists and contains the admin account
+2. Check PHP session support is enabled
+3. Clear browser cookies and try again
+4. Check file permissions on `data/users.json`
+
+### Permission denied errors
+
+Run these commands on your server:
+```bash
+chown -R www-data:www-data /path/to/calendar/data
+chmod 755 /path/to/calendar/data
+chmod 666 /path/to/calendar/data/events.json
+chmod 666 /path/to/calendar/data/users.json
+```
+
+### Changes not visible to other users
+
+- Make sure all users are accessing the same URL
+- Clear browser cache
+- Verify the `events.json` file is being updated
+
+## Technical Details
+
+### Data Format
+
+Events are stored in `data/events.json` as a JSON object:
+```json
+{
+  "2026-01-15": [
+    {
+      "title": "Team Meeting",
+      "description": "Discuss Q1 goals",
+      "author": "John Doe",
+      "timestamp": "2026-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+Users are stored in `data/users.json`:
+```json
+{
+  "admin": {
+    "password_hash": "$2y$10$...",
+    "full_name": "Administrator",
+    "is_admin": true,
+    "created_at": "2026-01-15 00:00:00"
+  }
+}
+```
+
+### API Endpoints
+
+**Authentication (auth.php)**
+- `GET auth.php?action=login` - User login
+- `GET auth.php?action=logout` - User logout
+- `GET auth.php?action=current` - Get current user info
+- `GET auth.php?action=check` - Check authentication status
+
+**User Management (users.php)** - Admin only
+- `GET users.php?action=list` - List all users
+- `POST users.php?action=add` - Add new user
+- `POST users.php?action=delete` - Delete user
+- `POST users.php?action=change_password` - Change password
+- `GET users.php?action=generate_password` - Generate random password
+
+**Calendar (api.php)** - Requires authentication
+- `GET api.php?action=get` - Returns all events
+- `POST api.php?action=save` - Saves events (expects JSON body with `events` object)
+
+### Browser Compatibility
+
+Works on all modern browsers:
+- Chrome/Edge 90+
+- Firefox 88+
+- Safari 14+
+- Mobile browsers (iOS Safari, Chrome Mobile)
+
+## License
+
+Free to use and modify for personal and commercial projects.
+
+## Support
+
+For issues or questions, check the troubleshooting section above or review the code comments in each file.
+
+## Backup Recommendation
+
+Set up a cron job to backup your data regularly:
+```bash
+# Add to crontab - backs up both events and users daily at 2 AM
+0 2 * * * cp /var/www/html/calendar/data/events.json /var/backups/calendar-events-$(date +\%Y\%m\%d).json
+0 2 * * * cp /var/www/html/calendar/data/users.json /var/backups/calendar-users-$(date +\%Y\%m\%d).json
+```
+
+## Security Best Practices
+
+1. **Change default admin password immediately**
+2. **Use HTTPS** in production (get free SSL from Let's Encrypt)
+3. **Regular backups** of both events.json and users.json
+4. **Strong passwords** - use the password generator
+5. **Limit admin accounts** - only give admin access to trusted users
+6. **Monitor access** - check server logs regularly
+7. **Keep PHP updated** - ensure your server runs latest PHP version
+
+Enjoy your collaborative calendar! 📅

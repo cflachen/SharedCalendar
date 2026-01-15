@@ -1,0 +1,502 @@
+// Global variables
+let currentDate = new Date();
+let selectedDate = null;
+let events = {};
+let syncStatus = 'synced'; // 'synced', 'syncing', 'offline', 'pending'
+let pendingSync = false;
+let currentUsername = null;
+
+// Initialize calendar on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuthentication();
+    setupEventListeners();
+    setupOfflineDetection();
+});
+
+// Check authentication
+async function checkAuthentication() {
+    try {
+        const response = await fetch('auth.php?action=current');
+        const data = await response.json();
+        
+        if (!data.success) {
+            window.location.href = 'login.html';
+            return;
+        }
+        
+        // Display user info
+        document.getElementById('userDisplay').textContent = `👤 ${data.user.full_name}`;
+        currentUsername = data.user.username;
+        
+        // Show admin button if user is admin
+        if (data.user.is_admin) {
+            document.getElementById('adminBtn').style.display = 'inline-block';
+        }
+        
+        // Load calendar
+        loadEvents();
+        renderCalendar();
+    } catch (error) {
+        console.error('Auth check error:', error);
+        window.location.href = 'login.html';
+    }
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    document.getElementById('prevMonth').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+    });
+    
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+        try {
+            await fetch('auth.php?action=logout');
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            window.location.href = 'login.html';
+        }
+    });
+    
+    document.getElementById('adminBtn').addEventListener('click', () => {
+        window.location.href = 'admin.html';
+    });
+
+    // Sync status click handler
+    document.getElementById('syncStatus').addEventListener('click', () => {
+        if (syncStatus === 'pending' || syncStatus === 'offline') {
+            loadEvents();
+        }
+    });
+
+    // Modal controls
+    document.querySelector('.close').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('entryForm').addEventListener('submit', handleFormSubmit);
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('modal');
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+}
+
+// Render the calendar
+function renderCalendar() {
+    const calendar = document.getElementById('calendar');
+    calendar.innerHTML = '';
+
+    // Update month display
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('currentMonth').textContent = 
+        `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+    // Add day headers
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    days.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'calendar-header';
+        dayHeader.textContent = day;
+        calendar.appendChild(dayHeader);
+    });
+
+    // Get first day of month and number of days
+    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const prevLastDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0);
+    
+    const firstDayIndex = firstDay.getDay();
+    const numberOfDays = lastDay.getDate();
+    const prevNumberOfDays = prevLastDay.getDate();
+
+    // Add previous month's trailing days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+        const day = prevNumberOfDays - i;
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, day);
+        createDayElement(day, date, true);
+    }
+
+    // Add current month's days
+    for (let day = 1; day <= numberOfDays; day++) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+        createDayElement(day, date, false);
+    }
+
+    // Add next month's leading days
+    const totalCells = calendar.children.length - 7; // Subtract header cells
+    const remainingCells = (Math.ceil(totalCells / 7) * 7) - totalCells;
+    for (let day = 1; day <= remainingCells; day++) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, day);
+        createDayElement(day, date, true);
+    }
+}
+
+// Create a day element
+function createDayElement(day, date, isOtherMonth) {
+    const dayElement = document.createElement('div');
+    dayElement.className = 'calendar-day';
+    
+    if (isOtherMonth) {
+        dayElement.classList.add('other-month');
+    }
+    
+    // Check if it's today
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+        dayElement.classList.add('today');
+    }
+    
+    // Day number
+    const dayNumber = document.createElement('div');
+    dayNumber.className = 'day-number';
+    dayNumber.textContent = day;
+    dayElement.appendChild(dayNumber);
+    
+    // Entries for this day
+    const dateKey = formatDate(date);
+    const dayEvents = events[dateKey] || [];
+    
+    if (dayEvents.length > 0) {
+        const entriesContainer = document.createElement('div');
+        entriesContainer.className = 'day-entries';
+        
+        // Show first 2 entries
+        dayEvents.slice(0, 2).forEach(event => {
+            const entryPreview = document.createElement('div');
+            entryPreview.className = 'entry-preview';
+            entryPreview.textContent = event.title;
+            entriesContainer.appendChild(entryPreview);
+        });
+        
+        dayElement.appendChild(entriesContainer);
+        
+        // Show count if more than 2
+        if (dayEvents.length > 2) {
+            const entryCount = document.createElement('div');
+            entryCount.className = 'entry-count';
+            entryCount.textContent = dayEvents.length;
+            dayElement.appendChild(entryCount);
+        }
+    }
+    
+    // Click handler
+    dayElement.addEventListener('click', () => openDayModal(date));
+    
+    document.getElementById('calendar').appendChild(dayElement);
+}
+
+// Format date as YYYY-MM-DD
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+// Format date for display
+function formatDateDisplay(date) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+}
+
+// Open modal for a specific day
+function openDayModal(date) {
+    selectedDate = date;
+    const modal = document.getElementById('modal');
+    const dateKey = formatDate(date);
+    
+    document.getElementById('modalTitle').textContent = 'Entries for ' + formatDateDisplay(date);
+    document.getElementById('modalDate').textContent = '';
+    
+    // Reset form
+    document.getElementById('entryForm').reset();
+    
+    // Display existing entries
+    displayEntries(dateKey);
+    
+    modal.style.display = 'block';
+}
+
+// Display entries for a date
+function displayEntries(dateKey) {
+    const entriesList = document.getElementById('entriesList');
+    const dayEvents = events[dateKey] || [];
+    
+    if (dayEvents.length === 0) {
+        entriesList.innerHTML = '<p style="color: #999; text-align: center; margin-top: 20px;">No entries yet. Add one above!</p>';
+        return;
+    }
+    
+    entriesList.innerHTML = '<h3 style="margin-top: 20px; margin-bottom: 15px; color: #667eea;">Existing Entries:</h3>';
+    
+    dayEvents.forEach((event, index) => {
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'entry-item';
+        
+        entryDiv.innerHTML = `
+            <h4>${escapeHtml(event.title)}</h4>
+            ${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}
+            <div class="entry-meta">
+                Added by ${escapeHtml(event.author)} on ${new Date(event.timestamp).toLocaleString()}
+            </div>
+            <div class="entry-actions">
+                <button class="btn btn-danger btn-sm" onclick="deleteEntry('${dateKey}', ${index})">Delete</button>
+            </div>
+        `;
+        
+        entriesList.appendChild(entryDiv);
+    });
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+    selectedDate = null;
+}
+
+// Handle form submission
+function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    if (!selectedDate) return;
+    
+    const title = document.getElementById('entryTitle').value;
+    const description = document.getElementById('entryDescription').value;
+    const author = document.getElementById('entryAuthor').value;
+    
+    const entry = {
+        title: title,
+        description: description,
+        author: author,
+        timestamp: new Date().toISOString()
+    };
+    
+    const dateKey = formatDate(selectedDate);
+    
+    if (!events[dateKey]) {
+        events[dateKey] = [];
+    }
+    
+    events[dateKey].push(entry);
+    
+    // Save to server
+    saveEvents();
+    
+    // Reset form
+    document.getElementById('entryForm').reset();
+    
+    // Update display
+    displayEntries(dateKey);
+    renderCalendar();
+}
+
+// Delete an entry
+function deleteEntry(dateKey, index) {
+    if (!confirm('Are you sure you want to delete this entry?')) {
+        return;
+    }
+    
+    events[dateKey].splice(index, 1);
+    
+    if (events[dateKey].length === 0) {
+        delete events[dateKey];
+    }
+    
+    saveEvents();
+    displayEntries(dateKey);
+    renderCalendar();
+}
+
+// Load events from server and merge with offline data
+async function loadEvents() {
+    try {
+        updateSyncStatus('syncing');
+        
+        const response = await fetch('api.php?action=get');
+        const data = await response.json();
+        
+        if (data.success) {
+            const serverEvents = data.events || {};
+            const localEvents = getLocalEvents();
+            
+            // Merge events: combine all entries, avoiding duplicates by timestamp
+            events = mergeEvents(serverEvents, localEvents);
+            
+            // Save merged events back locally
+            saveLocalEvents(events);
+            
+            // Sync merged data back to server
+            if (!isEqual(serverEvents, events)) {
+                await syncToServer(events);
+            }
+            
+            updateSyncStatus('synced');
+            renderCalendar();
+        }
+    } catch (error) {
+        console.error('Error loading events:', error);
+        updateSyncStatus('offline');
+        
+        // Load from local storage
+        const localEvents = getLocalEvents();
+        events = localEvents;
+        renderCalendar();
+    }
+}
+
+// Get events from localStorage
+function getLocalEvents() {
+    try {
+        const stored = localStorage.getItem('calendarEvents');
+        return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+        console.error('Error reading local storage:', error);
+        return {};
+    }
+}
+
+// Save events to localStorage
+function saveLocalEvents(data) {
+    try {
+        localStorage.setItem('calendarEvents', JSON.stringify(data));
+    } catch (error) {
+        console.error('Error saving to local storage:', error);
+    }
+}
+
+// Merge online and offline events - combine all entries
+function mergeEvents(serverEvents, localEvents) {
+    const merged = {};
+    const allDates = new Set([...Object.keys(serverEvents), ...Object.keys(localEvents)]);
+    
+    for (const date of allDates) {
+        const serverEntries = serverEvents[date] || [];
+        const localEntries = localEvents[date] || [];
+        
+        // Combine entries, removing duplicates by timestamp
+        const timestampMap = new Map();
+        
+        // Add server entries
+        serverEntries.forEach(entry => {
+            const key = entry.timestamp || JSON.stringify(entry);
+            timestampMap.set(key, entry);
+        });
+        
+        // Add local entries (overwrite if same timestamp, otherwise add)
+        localEntries.forEach(entry => {
+            const key = entry.timestamp || JSON.stringify(entry);
+            timestampMap.set(key, entry);
+        });
+        
+        merged[date] = Array.from(timestampMap.values());
+    }
+    
+    return merged;
+}
+
+// Check if two event objects are equal
+function isEqual(obj1, obj2) {
+    return JSON.stringify(obj1) === JSON.stringify(obj2);
+}
+
+// Save events locally first, then sync to server
+async function saveEvents() {
+    // Always save locally first
+    saveLocalEvents(events);
+    
+    // Try to sync to server
+    await syncToServer(events);
+}
+
+// Sync events to server
+async function syncToServer(data) {
+    try {
+        updateSyncStatus('syncing');
+        
+        const response = await fetch('api.php?action=save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ events: data })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            updateSyncStatus('synced');
+            pendingSync = false;
+        } else {
+            console.error('Error syncing events:', result.message);
+            updateSyncStatus('pending');
+            pendingSync = true;
+        }
+    } catch (error) {
+        console.error('Error syncing events:', error);
+        updateSyncStatus('pending');
+        pendingSync = true;
+    }
+}
+
+// Update sync status indicator
+function updateSyncStatus(status) {
+    syncStatus = status;
+    const statusEl = document.getElementById('syncStatus');
+    if (!statusEl) return;
+    
+    statusEl.className = `sync-status status-${status}`;
+    
+    switch(status) {
+        case 'synced':
+            statusEl.textContent = '✓ Synced';
+            statusEl.title = 'All changes synced';
+            break;
+        case 'syncing':
+            statusEl.textContent = '⟳ Syncing...';
+            statusEl.title = 'Syncing with server';
+            break;
+        case 'offline':
+            statusEl.textContent = '⊗ Offline';
+            statusEl.title = 'Offline - changes saved locally';
+            break;
+        case 'pending':
+            statusEl.textContent = '⏱ Pending';
+            statusEl.title = 'Waiting to sync - click to retry';
+            break;
+    }
+}
+
+// Setup offline detection
+function setupOfflineDetection() {
+    window.addEventListener('online', () => {
+        console.log('Back online - syncing...');
+        updateSyncStatus('syncing');
+        loadEvents();
+    });
+    
+    window.addEventListener('offline', () => {
+        console.log('Going offline');
+        updateSyncStatus('offline');
+    });
+    
+    // Check if currently offline
+    if (!navigator.onLine) {
+        updateSyncStatus('offline');
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Shared Calendar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 2em;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .user-info {
+            margin-right: 15px;
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-inline {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .form-inline .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .users-table th,
+        .users-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .users-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .users-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .badge-admin {
+            background: #667eea;
+            color: white;
+        }
+
+        .badge-user {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .password-display {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .password-display.show {
+            display: block;
+        }
+
+        .password-value {
+            font-family: monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+        }
+
+        .checkbox-group label {
+            font-weight: normal;
+            margin-bottom: 0;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                margin-top: 15px;
+                width: 100%;
+            }
+
+            .users-table {
+                font-size: 0.9em;
+            }
+
+            .users-table th,
+            .users-table td {
+                padding: 8px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🔧 Admin Panel</h1>
+                <div class="user-info" id="userInfo"></div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">📅 Calendar</button>
+                <button class="btn btn-secondary" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="content">
+            <div id="message" class="message"></div>
+
+            <!-- Add User Section -->
+            <div class="section">
+                <h2>Add New User</h2>
+                <form id="addUserForm">
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label for="newUsername">Username *</label>
+                            <input type="text" id="newUsername" required pattern="[a-zA-Z0-9_]{3,20}" 
+                                   title="3-20 characters, letters, numbers, underscore only">
+                        </div>
+                        <div class="form-group">
+                            <label for="newFullName">Full Name *</label>
+                            <input type="text" id="newFullName" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">Password *</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="newPassword" required minlength="6" style="flex: 1;">
+                            <button type="button" class="btn btn-success" onclick="generatePassword()">🎲 Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="newIsAdmin">
+                        <label for="newIsAdmin">Administrator privileges</label>
+                    </div>
+
+                    <div id="passwordDisplay" class="password-display">
+                        <strong>⚠️ Generated Password - Save This!</strong>
+                        <div class="password-value" id="generatedPassword"></div>
+                        <small>This password will not be shown again. Copy it now!</small>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary">Add User</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Change Password Section -->
+            <div class="section">
+                <h2>Change User Password</h2>
+                <form id="changePasswordForm">
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label for="changeUsername">Username</label>
+                            <select id="changeUsername" required>
+                                <option value="">Select user...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="changeNewPassword">New Password *</label>
+                            <input type="text" id="changeNewPassword" required minlength="6">
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button type="button" class="btn btn-success" onclick="generatePasswordForChange()">🎲 Generate Password</button>
+                        <button type="submit" class="btn btn-primary">Change Password</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Users List Section -->
+            <div class="section">
+                <h2>Manage Users</h2>
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="loadUsers()">🔄 Refresh List</button>
+                </div>
+                <table class="users-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px;">Loading users...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // Check authentication on load
+        async function checkAuth() {
+            try {
+                const response = await fetch('auth.php?action=current');
+                const data = await response.json();
+                
+                if (!data.success || !data.user.is_admin) {
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                currentUser = data.user;
+                document.getElementById('userInfo').textContent = `Logged in as: ${data.user.full_name}`;
+                loadUsers();
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                await fetch('auth.php?action=logout');
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type} show`;
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // Generate password
+        async function generatePassword() {
+            try {
+                const response = await fetch('users.php?action=generate_password');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('newPassword').value = data.password;
+                    document.getElementById('generatedPassword').textContent = data.password;
+                    document.getElementById('passwordDisplay').classList.add('show');
+                }
+            } catch (error) {
+                console.error('Generate password error:', error);
+            }
+        }
+
+        // Generate password for change
+        async function generatePasswordForChange() {
+            try {
+                const response = await fetch('users.php?action=generate_password');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('changeNewPassword').value = data.password;
+                    alert('Generated password: ' + data.password + '\n\nCopy this password now!');
+                }
+            } catch (error) {
+                console.error('Generate password error:', error);
+            }
+        }
+
+        // Add user form submit
+        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('newUsername').value;
+            const fullName = document.getElementById('newFullName').value;
+            const password = document.getElementById('newPassword').value;
+            const isAdmin = document.getElementById('newIsAdmin').checked;
+            
+            try {
+                const response = await fetch('users.php?action=add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, full_name: fullName, password, is_admin: isAdmin })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('User created successfully!', 'success');
+                    this.reset();
+                    document.getElementById('passwordDisplay').classList.remove('show');
+                    loadUsers();
+                } else {
+                    showMessage(data.message || 'Error creating user', 'error');
+                }
+            } catch (error) {
+                console.error('Add user error:', error);
+                showMessage('Connection error', 'error');
+            }
+        });
+
+        // Change password form submit
+        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('changeUsername').value;
+            const newPassword = document.getElementById('changeNewPassword').value;
+            
+            try {
+                const response = await fetch('users.php?action=change_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, new_password: newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('Password changed successfully!', 'success');
+                    this.reset();
+                } else {
+                    showMessage(data.message || 'Error changing password', 'error');
+                }
+            } catch (error) {
+                console.error('Change password error:', error);
+                showMessage('Connection error', 'error');
+            }
+        });
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch('users.php?action=list');
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayUsers(data.users);
+                    populateUserDropdown(data.users);
+                } else {
+                    showMessage('Error loading users', 'error');
+                }
+            } catch (error) {
+                console.error('Load users error:', error);
+                showMessage('Connection error', 'error');
+            }
+        }
+
+        // Display users in table
+        function displayUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No users found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td><strong>${escapeHtml(user.username)}</strong></td>
+                    <td>${escapeHtml(user.full_name)}</td>
+                    <td>
+                        <span class="badge ${user.is_admin ? 'badge-admin' : 'badge-user'}">
+                            ${user.is_admin ? '👑 Admin' : '👤 User'}
+                        </span>
+                    </td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                        ${user.username !== currentUser.username ? 
+                            `<button class="btn btn-danger" onclick="deleteUser('${escapeHtml(user.username)}')">Delete</button>` :
+                            '<em>Current user</em>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Populate user dropdown
+        function populateUserDropdown(users) {
+            const select = document.getElementById('changeUsername');
+            select.innerHTML = '<option value="">Select user...</option>' +
+                users.map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.full_name)} (${escapeHtml(user.username)})</option>`).join('');
+        }
+
+        // Delete user
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('users.php?action=delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showMessage('User deleted successfully!', 'success');
+                    loadUsers();
+                } else {
+                    showMessage(data.message || 'Error deleting user', 'error');
+                }
+            } catch (error) {
+                console.error('Delete user error:', error);
+                showMessage('Connection error', 'error');
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        checkAuth();
+    </script>
+</body>
+</html>

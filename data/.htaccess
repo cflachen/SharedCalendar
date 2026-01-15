@@ -1,0 +1,10 @@
+# Deny direct access to the data directory
+<Files "events.json">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Allow access only through api.php
+<FilesMatch "^(api\.php)$">
+    Allow from all
+</FilesMatch>
