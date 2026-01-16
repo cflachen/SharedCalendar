@@ -607,41 +607,79 @@ function setupOfflineDetection() {
     setupAutoRefresh();
 }
 
+// Global polling interval ID
+let pollInterval = null;
+
 // Auto-refresh calendar data from server
 function setupAutoRefresh() {
-    setInterval(async () => {
-        // Only poll if online and not in the middle of a sync
-        if (navigator.onLine && syncStatus !== 'syncing') {
-            try {
-                const response = await fetch('api.php?action=get', {
-                    credentials: 'include'
-                });
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    const data = JSON.parse(text);
-                    
-                    // Check if server data differs from local data
-                    const localData = JSON.stringify(events);
-                    const serverData = JSON.stringify(data.events || {});
-                    
-                    if (localData !== serverData) {
-                        console.log('Server data changed, updating calendar...');
-                        // Merge server events with local changes
-                        const mergedEvents = mergeEvents(events, data.events || {});
-                        events = mergedEvents;
-                        renderCalendar();
-                        if (selectedDate) {
-                            displayEntries(formatDate(selectedDate));
-                        }
-                        updateSyncStatus('synced');
-                    }
-                }
-            } catch (error) {
-                console.error('Auto-refresh error:', error);
-            }
+    // Clear any existing interval to prevent duplicates
+    if (pollInterval) clearInterval(pollInterval);
+    
+    pollInterval = setInterval(async () => {
+        // Skip polling if: offline, syncing, or pending sync
+        if (!navigator.onLine || syncStatus === 'syncing' || pendingSync) {
+            return;
         }
-    }, 10000); // Poll every 10 seconds
+        
+        try {
+            const response = await fetch('api.php?action=get', {
+                credentials: 'include'
+            });
+            
+            if (!response.ok) {
+                console.error('Poll response not ok:', response.status);
+                return;
+            }
+            
+            const text = await response.text();
+            let serverData;
+            
+            try {
+                serverData = JSON.parse(text);
+            } catch (parseError) {
+                console.error('Poll parse error:', parseError);
+                return;
+            }
+            
+            // Deep comparison of objects
+            const serverEvents = serverData.events || {};
+            const hasChanges = !isDeepEqual(events, serverEvents);
+            
+            if (hasChanges) {
+                console.log('📡 Server data changed detected, updating calendar...');
+                console.log('Old local events count:', Object.keys(events).length);
+                console.log('New server events count:', Object.keys(serverEvents).length);
+                
+                events = serverEvents;
+                updateSyncStatus('synced');
+                renderCalendar();
+                if (selectedDate) {
+                    displayEntries(formatDate(selectedDate));
+                }
+            }
+        } catch (error) {
+            console.error('Poll error:', error);
+        }
+    }, 5000); // Poll every 5 seconds
+}
+
+// Deep comparison of two objects
+function isDeepEqual(obj1, obj2) {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+    
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    
+    if (keys1.length !== keys2.length) return false;
+    
+    for (let key of keys1) {
+        if (!keys2.includes(key)) return false;
+        if (!isDeepEqual(obj1[key], obj2[key])) return false;
+    }
+    
+    return true;
 }
 
 // Escape HTML to prevent XSS

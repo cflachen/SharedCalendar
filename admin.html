@@ -489,70 +489,76 @@
         }
 
         // Add user form submit
-        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('newUsername').value;
-            const fullName = document.getElementById('newFullName').value;
-            const password = document.getElementById('newPassword').value;
-            const isAdmin = document.getElementById('newIsAdmin').checked;
-            
-            try {
-                const response = await fetch('users.php?action=add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ username, full_name: fullName, password, is_admin: isAdmin })
-                });
+        const addUserForm = document.getElementById('addUserForm');
+        if (addUserForm) {
+            addUserForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                const text = await response.text();
-                console.log('Add user response:', text);
-                const data = JSON.parse(text);
+                const username = document.getElementById('newUsername').value;
+                const fullName = document.getElementById('newFullName').value;
+                const password = document.getElementById('newPassword').value;
+                const isAdmin = document.getElementById('newIsAdmin').checked;
                 
-                if (data.success) {
-                    showMessage('User created successfully!', 'success');
-                    this.reset();
-                    document.getElementById('passwordDisplay').classList.remove('show');
-                    loadUsers();
-                } else {
-                    showMessage(data.message || 'Error creating user', 'error');
+                try {
+                    const response = await fetch('users.php?action=add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username, full_name: fullName, password, is_admin: isAdmin })
+                    });
+                    
+                    const text = await response.text();
+                    console.log('Add user response:', text);
+                    const data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        showMessage('User created successfully!', 'success');
+                        this.reset();
+                        document.getElementById('passwordDisplay').classList.remove('show');
+                        loadUsers();
+                    } else {
+                        showMessage(data.message || 'Error creating user', 'error');
+                    }
+                } catch (error) {
+                    console.error('Add user error:', error);
+                    showMessage('Connection error', 'error');
                 }
-            } catch (error) {
-                console.error('Add user error:', error);
-                showMessage('Connection error', 'error');
-            }
-        });
+            });
+        }
 
         // Change password form submit
-        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const username = document.getElementById('changeUsername').value;
-            const newPassword = document.getElementById('changeNewPassword').value;
-            
-            try {
-                const response = await fetch('users.php?action=change_password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ username, new_password: newPassword })
-                });
+        const changePasswordForm = document.getElementById('changePasswordForm');
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                const text = await response.text();
-                console.log('Change password response:', text);
-                const data = JSON.parse(text);
+                const username = document.getElementById('changeUsername').value;
+                const newPassword = document.getElementById('changeNewPassword').value;
                 
-                if (data.success) {
-                    showMessage('Password changed successfully!', 'success');
-                    this.reset();
-                } else {
-                    showMessage(data.message || 'Error changing password', 'error');
+                try {
+                    const response = await fetch('users.php?action=change_password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username, new_password: newPassword })
+                    });
+                    
+                    const text = await response.text();
+                    console.log('Change password response:', text);
+                    const data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        showMessage('Password changed successfully!', 'success');
+                        this.reset();
+                    } else {
+                        showMessage(data.message || 'Error changing password', 'error');
+                    }
+                } catch (error) {
+                    console.error('Change password error:', error);
+                    showMessage('Connection error', 'error');
                 }
-            } catch (error) {
-                console.error('Change password error:', error);
-                showMessage('Connection error', 'error');
-            }
-        });
+            });
+        }
 
         // Load users
         async function loadUsers() {
@@ -677,31 +683,36 @@
         }
 
         // Handle settings form submission
-        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const title = document.getElementById('calendarTitle').value;
-            
-            try {
-                const formData = new FormData();
-                formData.append('title', title);
+        const settingsForm = document.getElementById('settingsForm');
+        if (settingsForm) {
+            settingsForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const title = document.getElementById('calendarTitle').value;
                 
-                const response = await fetch('settings.php?action=setTitle', {
-                    method: 'POST',
-                    credentials: 'include',
-                    body: formData
-                });
-                
-                const text = await response.text();
-                const data = JSON.parse(text);
-                
-                if (data.success) {
-                    showMessage('Calendar title updated successfully!', 'success');
-                } else {
-                    showMessage(data.message || 'Error updating title', 'error');
+                try {
+                    const formData = new FormData();
+                    formData.append('title', title);
+                    
+                    const response = await fetch('settings.php?action=setTitle', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                    
+                    const text = await response.text();
+                    const data = JSON.parse(text);
+                    
+                    if (data.success) {
+                        showMessage('Calendar title updated successfully!', 'success');
+                    } else {
+                        showMessage(data.message || 'Error updating title', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error updating settings:', error);
+                    showMessage('Connection error', 'error');
                 }
-            } catch (error) {
-                console.error('Error updating settings:', error);
-                showMessage('Connection error', 'error');
+            });
+        }
             }
         });
 
