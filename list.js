@@ -49,13 +49,14 @@ async function checkAuthentication() {
 // Load calendar title from settings
 async function loadCalendarTitle() {
     try {
-        const response = await fetch('settings.php?action=get', {
+        const response = await fetch('settings.php?action=getTitle', {
             credentials: 'include'
         });
-        const data = await response.json();
-        if (data.success && data.settings && data.settings.calendarTitle) {
-            document.getElementById('calendarTitle').textContent = data.settings.calendarTitle;
-            document.title = `Event List - ${data.settings.calendarTitle}`;
+        const text = await response.text();
+        const data = JSON.parse(text);
+        if (data.calendar_title) {
+            document.getElementById('calendarTitle').textContent = data.calendar_title;
+            document.title = `Event List - ${data.calendar_title}`;
         }
     } catch (error) {
         console.error('Failed to load calendar title:', error);
@@ -108,7 +109,7 @@ function updateMonthDisplay() {
 // Load events from server
 async function loadEvents() {
     try {
-        const response = await fetch('events.php', {
+        const response = await fetch('api.php?action=get', {
             credentials: 'include'
         });
         const text = await response.text();
@@ -119,7 +120,13 @@ async function loadEvents() {
             return;
         }
         
-        events = JSON.parse(text);
+        const data = JSON.parse(text);
+        
+        if (data.success && data.events) {
+            events = data.events;
+        } else {
+            events = { entries: [] };
+        }
         
         // Ensure entries array exists
         if (!events.entries) {
