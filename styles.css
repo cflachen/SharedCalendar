@@ -521,9 +521,8 @@ header h1 {
         font-weight: bold !important;
     }
     
-    /* Entry previews with colors */
+    /* Entry previews with colors - DO NOT override background-color, let inline styles work */
     .entry-preview {
-        background-color: inherit !important;
         color: white !important;
         padding: 2px 5px !important;
         margin: 2px 0 !important;
