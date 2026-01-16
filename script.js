@@ -146,10 +146,63 @@ function setupEventListeners() {
     });
 }
 
+// Global color map for entries - built once per render
+let entryColorMap = new Map();
+
+// Color palette for events - stronger colors with good contrast for white text
+const EVENT_COLORS = ['#4da6ff', '#4dff4d', '#e6a800', '#ff6b9d', '#c77dff'];
+
+// Build a color map ensuring no two overlapping entries share the same color
+function buildEntryColorMap() {
+    entryColorMap = new Map();
+    const allEntries = events.entries || [];
+    
+    if (allEntries.length === 0) return;
+    
+    // Sort entries by start date, then by ID for consistency
+    const sortedEntries = [...allEntries].sort((a, b) => {
+        if (a.startDate !== b.startDate) {
+            return a.startDate.localeCompare(b.startDate);
+        }
+        return a.id - b.id;
+    });
+    
+    // For each entry, find overlapping entries and assign first available color
+    sortedEntries.forEach(entry => {
+        // Find all entries that overlap with this one
+        const overlappingColors = new Set();
+        
+        sortedEntries.forEach(other => {
+            if (other.id !== entry.id && entryColorMap.has(other.id)) {
+                // Check if entries overlap (date ranges intersect)
+                if (entry.startDate <= other.endDate && entry.endDate >= other.startDate) {
+                    overlappingColors.add(entryColorMap.get(other.id));
+                }
+            }
+        });
+        
+        // Assign first color not used by overlapping entries
+        let colorIndex = 0;
+        while (overlappingColors.has(colorIndex) && colorIndex < EVENT_COLORS.length) {
+            colorIndex++;
+        }
+        
+        // If all colors used, cycle back (shouldn't happen often with 5 colors)
+        if (colorIndex >= EVENT_COLORS.length) {
+            colorIndex = entry.id % EVENT_COLORS.length;
+        }
+        
+        entryColorMap.set(entry.id, colorIndex);
+    });
+}
+
 // Render the calendar
 function renderCalendar() {
     const calendar = document.getElementById('calendar');
     calendar.innerHTML = '';
+    
+    // Build color map for all entries
+    buildEntryColorMap();
 
     // Update month display
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -229,9 +282,6 @@ function createDayElement(day, date, isOtherMonth) {
         const entriesContainer = document.createElement('div');
         entriesContainer.className = 'day-entries';
         
-        // Color palette for overlapping events - stronger, less pastel
-        const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
-        
         // Sort entries by ID for consistent ordering
         const sortedDayEntries = [...dayEntries].sort((a, b) => a.id - b.id);
         
@@ -239,9 +289,9 @@ function createDayElement(day, date, isOtherMonth) {
         sortedDayEntries.slice(0, 4).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
-            // Get consistent color based on entry ID only (same event, same color)
-            const colorIndex = getColorIndexForEntry(entry.id);
-            entryPreview.style.backgroundColor = colors[colorIndex];
+            // Get color from global color map (ensures same event = same color, no duplicates per day)
+            const colorIndex = entryColorMap.get(entry.id) || 0;
+            entryPreview.style.backgroundColor = EVENT_COLORS[colorIndex];
             entryPreview.style.color = '#ffffff';
             entryPreview.style.whiteSpace = 'normal';
             entryPreview.style.wordWrap = 'break-word';
@@ -278,15 +328,6 @@ function formatDate(date) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-}
-
-// Get consistent color index for an entry based on its ID
-function getColorIndexForEntry(entryId) {
-    // Use a simple hash of the entry ID to get a consistent color
-    // This ensures the same entry always gets the same color across all days
-    const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
-    const hashCode = Math.abs(entryId % colors.length);
-    return hashCode;
 }
 
 // Format date for display
