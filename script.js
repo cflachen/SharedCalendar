@@ -236,8 +236,9 @@ function createDayElement(day, date, isOtherMonth) {
         dayEntries.slice(0, 2).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
-            // Get consistent color based on entry ID, not position
-            const colorIndex = getColorIndexForEntry(entry.id);
+            // Get color based on entry ID AND date to vary colors per day
+            const colorIndex = getColorIndexForEntry(entry.id, dateString);
+            const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
             entryPreview.style.backgroundColor = colors[colorIndex];
             entryPreview.style.color = '#ffffff';
             entryPreview.textContent = entry.title;
@@ -274,13 +275,21 @@ function formatDate(date) {
     return `${year}-${month}-${day}`;
 }
 
-// Get consistent color index for an entry based on its ID
-function getColorIndexForEntry(entryId) {
-    // Use a simple hash of the entry ID to get a consistent color
-    // This ensures the same entry always gets the same color
+// Get color index for an entry - varies by date so same event has different colors each day
+function getColorIndexForEntry(entryId, dateString) {
+    // Combine entry ID and date string to generate a hash
+    // This ensures same event gets different colors on different days
+    const combined = String(entryId) + dateString;
     const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
-    const hashCode = Math.abs(entryId % colors.length);
-    return hashCode;
+    
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+        hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    return Math.abs(hash) % colors.length;
 }
 
 // Format date for display
