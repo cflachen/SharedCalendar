@@ -286,11 +286,15 @@ function handleFormSubmit(e) {
     
     const dateKey = formatDate(selectedDate);
     
+    console.log('Adding entry:', { dateKey, entry });
+    
     if (!events[dateKey]) {
         events[dateKey] = [];
     }
     
     events[dateKey].push(entry);
+    
+    console.log('Events after adding:', events);
     
     // Save to server
     saveEvents();
@@ -427,8 +431,8 @@ async function saveEvents() {
 async function syncToServer(data) {
     try {
         updateSyncStatus('syncing');
-        
-        const response = await fetch('api.php?action=save', {
+                console.log('Syncing data to server:', data);
+                const response = await fetch('api.php?action=save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

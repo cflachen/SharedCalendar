@@ -7,10 +7,18 @@
 session_start();
 require_once 'auth.php';
 
+// Set proper CORS headers for credentials
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST');
+header('Access-Control-Allow-Origin: ' . ($_SERVER['HTTP_ORIGIN'] ?? '*'));
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 // Require authentication for all API calls
 requireAuth();
@@ -86,7 +94,8 @@ function saveEvents($dataFile) {
         if (!isset($data['events'])) {
             echo json_encode([
                 'success' => false,
-                'message' => 'No events data provided'
+                'message' => 'No events data provided',
+                'debug' => 'events key not found in request'
             ]);
             return;
         }
@@ -94,18 +103,37 @@ function saveEvents($dataFile) {
         // Validate and sanitize data
         $events = $data['events'];
         
+        // Ensure events is an array
+        if (!is_array($events)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Events must be an object/array',
+                'debug' => 'events type: ' . gettype($events)
+            ]);
+            return;
+        }
+        
         // Write to file with file locking to prevent concurrent write issues
         $fp = fopen($dataFile, 'w');
         if ($fp) {
             if (flock($fp, LOCK_EX)) {
-                fwrite($fp, json_encode($events, JSON_PRETTY_PRINT));
+                $jsonContent = json_encode($events, JSON_PRETTY_PRINT);
+                $bytesWritten = fwrite($fp, $jsonContent);
                 flock($fp, LOCK_UN);
                 fclose($fp);
                 
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Events saved successfully'
-                ]);
+                if ($bytesWritten === false) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Failed to write to file'
+                    ]);
+                } else {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Events saved successfully',
+                        'debug' => "Wrote $bytesWritten bytes"
+                    ]);
+                }
             } else {
                 fclose($fp);
                 echo json_encode([
