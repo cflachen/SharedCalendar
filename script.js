@@ -427,6 +427,7 @@ function handleFormSubmit(e) {
                 ...events.entries[entryIndex],
                 title: title,
                 description: description,
+                startDate: startDateInput,
                 endDate: endDateInput,
                 timestamp: new Date().toISOString()
             };
