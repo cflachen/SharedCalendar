@@ -111,6 +111,14 @@ function setupEventListeners() {
         });
     }
 
+    // List View button
+    const listViewBtn = document.getElementById('listViewBtn');
+    if (listViewBtn) {
+        listViewBtn.addEventListener('click', () => {
+            window.location.href = 'list.html';
+        });
+    }
+
     // Sync status click handler
     const syncStatus = document.getElementById('syncStatus');
     if (syncStatus) {

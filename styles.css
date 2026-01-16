@@ -426,6 +426,85 @@ header h1 {
     }
 }
 
+/* List View Styles */
+.list-container {
+    margin: 20px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.list-header {
+    background: #667eea;
+    color: white;
+    padding: 15px 20px;
+}
+
+.list-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+}
+
+.event-list {
+    padding: 10px;
+}
+
+.event-list-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin: 10px;
+    background: #fafafa;
+    transition: box-shadow 0.2s;
+}
+
+.event-list-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.event-list-title {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.event-list-dates {
+    font-size: 0.95em;
+    color: #555;
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+.event-list-dates .date-label {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.event-list-description {
+    font-size: 0.95em;
+    color: #666;
+    padding: 10px;
+    background: #f0f0f0;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.event-list-author {
+    font-size: 0.85em;
+    color: #888;
+    font-style: italic;
+}
+
+.no-events {
+    padding: 40px;
+    text-align: center;
+    color: #888;
+    font-size: 1.1em;
+}
+
 /* Print styles - preserve colors and appearance */
 @media print {
     /* Force background colors to print */
@@ -542,6 +621,26 @@ header h1 {
     /* Hide modal if open */
     .modal {
         display: none !important;
+    }
+    
+    /* List view print styles */
+    .list-container {
+        margin: 10px !important;
+    }
+    
+    .list-header {
+        background: #667eea !important;
+        color: white !important;
+    }
+    
+    .event-list-item {
+        border: 1px solid #333 !important;
+        page-break-inside: avoid;
+        margin: 8px 10px !important;
+    }
+    
+    .event-list-description {
+        background: #f0f0f0 !important;
     }
     
     /* Page setup */
