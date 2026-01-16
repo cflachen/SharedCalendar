@@ -235,8 +235,8 @@ function createDayElement(day, date, isOtherMonth) {
         // Sort entries by ID for consistent ordering
         const sortedDayEntries = [...dayEntries].sort((a, b) => a.id - b.id);
         
-        // Show first 2 entries with color coding
-        sortedDayEntries.slice(0, 2).forEach((entry, index) => {
+        // Show first 4 entries with color coding
+        sortedDayEntries.slice(0, 4).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
             // Get consistent color based on entry ID only (same event, same color)
@@ -254,8 +254,8 @@ function createDayElement(day, date, isOtherMonth) {
         
         dayElement.appendChild(entriesContainer);
         
-        // Show count if more than 2
-        if (dayEntries.length > 2) {
+        // Show count if more than 4
+        if (dayEntries.length > 4) {
             const entryCount = document.createElement('div');
             entryCount.className = 'entry-count';
             entryCount.textContent = dayEntries.length;
