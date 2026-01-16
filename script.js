@@ -236,7 +236,9 @@ function createDayElement(day, date, isOtherMonth) {
         dayEntries.slice(0, 2).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
-            entryPreview.style.backgroundColor = colors[index % colors.length];
+            // Get consistent color based on entry ID, not position
+            const colorIndex = getColorIndexForEntry(entry.id);
+            entryPreview.style.backgroundColor = colors[colorIndex];
             entryPreview.style.color = '#ffffff';
             entryPreview.textContent = entry.title;
             entryPreview.style.cursor = 'pointer';
@@ -270,6 +272,15 @@ function formatDate(date) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+// Get consistent color index for an entry based on its ID
+function getColorIndexForEntry(entryId) {
+    // Use a simple hash of the entry ID to get a consistent color
+    // This ensures the same entry always gets the same color
+    const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
+    const hashCode = Math.abs(entryId % colors.length);
+    return hashCode;
 }
 
 // Format date for display
