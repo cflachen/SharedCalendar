@@ -217,29 +217,41 @@ function createDayElement(day, date, isOtherMonth) {
     dayNumber.textContent = day;
     dayElement.appendChild(dayNumber);
     
-    // Entries for this day
-    const dateKey = formatDate(date);
-    const dayEvents = events[dateKey] || [];
+    // Get entries that overlap with this date
+    const dateString = formatDate(date);
+    const allEntries = events.entries || [];
+    const dayEntries = allEntries.filter(entry => {
+        return entry.startDate <= dateString && entry.endDate >= dateString;
+    });
     
-    if (dayEvents.length > 0) {
+    if (dayEntries.length > 0) {
         const entriesContainer = document.createElement('div');
         entriesContainer.className = 'day-entries';
         
-        // Show first 2 entries
-        dayEvents.slice(0, 2).forEach(event => {
+        // Color palette for overlapping events
+        const colors = ['#e8f4f8', '#e8f8e8', '#fef8e8', '#f8e8f0', '#f0e8f8'];
+        
+        // Show first 2 entries with color coding
+        dayEntries.slice(0, 2).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
-            entryPreview.textContent = event.title;
+            entryPreview.style.backgroundColor = colors[index % colors.length];
+            entryPreview.textContent = entry.title;
+            entryPreview.style.cursor = 'pointer';
+            entryPreview.onclick = (e) => {
+                e.stopPropagation();
+                openDayModal(date);
+            };
             entriesContainer.appendChild(entryPreview);
         });
         
         dayElement.appendChild(entriesContainer);
         
         // Show count if more than 2
-        if (dayEvents.length > 2) {
+        if (dayEntries.length > 2) {
             const entryCount = document.createElement('div');
             entryCount.className = 'entry-count';
-            entryCount.textContent = dayEvents.length;
+            entryCount.textContent = dayEntries.length;
             dayElement.appendChild(entryCount);
         }
     }
@@ -273,39 +285,59 @@ function openDayModal(date) {
     document.getElementById('modalTitle').textContent = 'Entries for ' + formatDateDisplay(date);
     document.getElementById('modalDate').textContent = '';
     
-    // Reset form
+    // Reset form and set default dates
     document.getElementById('entryForm').reset();
+    const dateString = formatDate(date); // YYYY-MM-DD format
+    document.getElementById('entryStartDate').value = dateString;
+    document.getElementById('entryEndDate').value = dateString;
     
-    // Display existing entries
-    displayEntries(dateKey);
+    // Display existing entries for this date
+    displayEntriesForDate(date);
     
     modal.style.display = 'block';
 }
 
 // Display entries for a date
 function displayEntries(dateKey) {
+    // Legacy function - kept for compatibility
+    // New function uses displayEntriesForDate instead
+}
+
+// Display entries that overlap with a specific date
+function displayEntriesForDate(date) {
     const entriesList = document.getElementById('entriesList');
-    const dayEvents = events[dateKey] || [];
+    const dateString = formatDate(date);
     
-    if (dayEvents.length === 0) {
+    // Get all entries that overlap with this date
+    const allEntries = events.entries || [];
+    const dayEntries = allEntries.filter(entry => {
+        return entry.startDate <= dateString && entry.endDate >= dateString;
+    });
+    
+    if (dayEntries.length === 0) {
         entriesList.innerHTML = '<p style="color: #999; text-align: center; margin-top: 20px;">No entries yet. Add one above!</p>';
         return;
     }
     
     entriesList.innerHTML = '<h3 style="margin-top: 20px; margin-bottom: 15px; color: #667eea;">Existing Entries:</h3>';
     
-    dayEvents.forEach((event, index) => {
+    dayEntries.forEach((entry, index) => {
         const entryDiv = document.createElement('div');
         entryDiv.className = 'entry-item';
         
+        const dateRange = entry.startDate === entry.endDate 
+            ? formatDateDisplay(new Date(entry.startDate + 'T00:00:00'))
+            : `${formatDateDisplay(new Date(entry.startDate + 'T00:00:00'))} - ${formatDateDisplay(new Date(entry.endDate + 'T00:00:00'))}`;
+        
         entryDiv.innerHTML = `
-            <h4>${escapeHtml(event.title)}</h4>
-            ${event.description ? `<p>${escapeHtml(event.description)}</p>` : ''}
+            <h4>${escapeHtml(entry.title)}</h4>
+            <p style="font-size: 0.9em; color: #666; margin: 5px 0;"><strong>Dates:</strong> ${dateRange}</p>
+            ${entry.description ? `<p>${escapeHtml(entry.description)}</p>` : ''}
             <div class="entry-meta">
-                Added by ${escapeHtml(event.author)} on ${new Date(event.timestamp).toLocaleString()}
+                Added by ${escapeHtml(entry.author)} on ${new Date(entry.timestamp).toLocaleString()}
             </div>
             <div class="entry-actions">
-                <button class="btn btn-danger btn-sm" onclick="deleteEntry('${dateKey}', ${index})">Delete</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEntry(${entry.id})">Delete</button>
             </div>
         `;
         
@@ -327,23 +359,42 @@ function handleFormSubmit(e) {
     
     const title = document.getElementById('entryTitle').value;
     const description = document.getElementById('entryDescription').value;
+    const startDateInput = document.getElementById('entryStartDate').value;
+    const endDateInput = document.getElementById('entryEndDate').value;
     
+    // Validate dates
+    if (!startDateInput || !endDateInput) {
+        alert('Please select both start and end dates');
+        return;
+    }
+    
+    const startDate = new Date(startDateInput);
+    const endDate = new Date(endDateInput);
+    
+    if (startDate > endDate) {
+        alert('End date must be after or equal to start date');
+        return;
+    }
+    
+    // Create entry with date range
     const entry = {
+        id: Date.now(), // Unique ID for this entry
         title: title,
         description: description,
         author: currentUserFullName,
+        startDate: startDateInput, // Store as YYYY-MM-DD string
+        endDate: endDateInput,
         timestamp: new Date().toISOString()
     };
     
-    const dateKey = formatDate(selectedDate);
+    console.log('Adding entry:', entry);
     
-    console.log('Adding entry:', { dateKey, entry });
-    
-    if (!events[dateKey]) {
-        events[dateKey] = [];
+    // Initialize events object if needed
+    if (!events.entries) {
+        events.entries = [];
     }
     
-    events[dateKey].push(entry);
+    events.entries.push(entry);
     
     console.log('Events after adding:', events);
     
@@ -353,35 +404,36 @@ function handleFormSubmit(e) {
     // Reset form
     document.getElementById('entryForm').reset();
     
+    // Close modal immediately
+    closeModal();
+    
     // Update display
-    displayEntries(dateKey);
     renderCalendar();
 }
 
 // Delete an entry
-function deleteEntry(dateKey, index) {
+function deleteEntry(entryId) {
     if (!confirm('Are you sure you want to delete this entry?')) {
         return;
     }
     
-    if (!events[dateKey] || !events[dateKey][index]) {
-        console.error('Entry not found to delete');
+    const allEntries = events.entries || [];
+    const entryIndex = allEntries.findIndex(e => e.id === entryId);
+    
+    if (entryIndex === -1) {
+        console.error('Entry not found to delete:', entryId);
         alert('Entry not found');
         return;
     }
     
-    console.log('Deleting entry:', { dateKey, index, entry: events[dateKey][index] });
+    console.log('Deleting entry:', allEntries[entryIndex]);
     
-    events[dateKey].splice(index, 1);
-    
-    if (events[dateKey].length === 0) {
-        delete events[dateKey];
-    }
+    allEntries.splice(entryIndex, 1);
     
     console.log('Events after deletion:', events);
     
     saveEvents();
-    displayEntries(dateKey);
+    closeModal();
     renderCalendar();
 }
 
@@ -409,16 +461,16 @@ async function loadEvents() {
             console.error('Response text:', text.substring(0, 200));
             updateSyncStatus('offline');
             const localEvents = getLocalEvents();
-            events = localEvents;
+            events = migrateEventStructure(localEvents);
             renderCalendar();
             return;
         }
         
         if (data.success) {
-            const serverEvents = data.events || {};
+            const serverEvents = migrateEventStructure(data.events || {});
             const localEvents = getLocalEvents();
             
-            // Merge events: combine all entries, avoiding duplicates by timestamp
+            // Merge events
             events = mergeEvents(serverEvents, localEvents);
             
             // Save merged events back locally
@@ -438,19 +490,55 @@ async function loadEvents() {
         
         // Load from local storage
         const localEvents = getLocalEvents();
-        events = localEvents;
+        events = migrateEventStructure(localEvents);
         renderCalendar();
     }
+}
+
+// Migrate old event structure (by date) to new structure (entries array)
+function migrateEventStructure(eventData) {
+    // If already in new format, return as-is
+    if (eventData.entries && Array.isArray(eventData.entries)) {
+        return eventData;
+    }
+    
+    // If empty, return new format
+    if (!eventData || Object.keys(eventData).length === 0) {
+        return { entries: [] };
+    }
+    
+    // Migrate old format (object with date keys) to new format (entries array)
+    const entries = [];
+    for (const dateKey in eventData) {
+        if (Array.isArray(eventData[dateKey])) {
+            // Old format: each date key contains an array of entries
+            eventData[dateKey].forEach(entry => {
+                entries.push({
+                    id: entry.id || Date.now() + Math.random(),
+                    title: entry.title,
+                    description: entry.description,
+                    author: entry.author,
+                    startDate: dateKey,
+                    endDate: dateKey,
+                    timestamp: entry.timestamp
+                });
+            });
+        }
+    }
+    
+    return { entries };
 }
 
 // Get events from localStorage
 function getLocalEvents() {
     try {
         const stored = localStorage.getItem('calendarEvents');
-        return stored ? JSON.parse(stored) : {};
+        const data = stored ? JSON.parse(stored) : { entries: [] };
+        // Ensure it's in new format
+        return migrateEventStructure(data);
     } catch (error) {
         console.error('Error reading local storage:', error);
-        return {};
+        return { entries: [] };
     }
 }
 
@@ -465,32 +553,32 @@ function saveLocalEvents(data) {
 
 // Merge online and offline events - combine all entries
 function mergeEvents(serverEvents, localEvents) {
-    const merged = {};
-    const allDates = new Set([...Object.keys(serverEvents), ...Object.keys(localEvents)]);
+    // Both should be in new format { entries: [] } at this point
+    const serverEntries = serverEvents.entries || [];
+    const localEntries = localEvents.entries || [];
     
-    for (const date of allDates) {
-        const serverEntries = serverEvents[date] || [];
-        const localEntries = localEvents[date] || [];
-        
-        // Combine entries, removing duplicates by timestamp
-        const timestampMap = new Map();
-        
-        // Add server entries
-        serverEntries.forEach(entry => {
-            const key = entry.timestamp || JSON.stringify(entry);
-            timestampMap.set(key, entry);
-        });
-        
-        // Add local entries (overwrite if same timestamp, otherwise add)
-        localEntries.forEach(entry => {
-            const key = entry.timestamp || JSON.stringify(entry);
-            timestampMap.set(key, entry);
-        });
-        
-        merged[date] = Array.from(timestampMap.values());
-    }
+    // Merge by ID, keeping newer timestamps
+    const entriesMap = new Map();
     
-    return merged;
+    // Add server entries
+    serverEntries.forEach(entry => {
+        entriesMap.set(entry.id, entry);
+    });
+    
+    // Add/override with local entries (local changes take precedence)
+    localEntries.forEach(entry => {
+        if (entriesMap.has(entry.id)) {
+            // Keep the one with newer timestamp
+            const existing = entriesMap.get(entry.id);
+            if (new Date(entry.timestamp) > new Date(existing.timestamp)) {
+                entriesMap.set(entry.id, entry);
+            }
+        } else {
+            entriesMap.set(entry.id, entry);
+        }
+    });
+    
+    return { entries: Array.from(entriesMap.values()) };
 }
 
 // Check if two event objects are equal
@@ -641,20 +729,20 @@ function setupAutoRefresh() {
                 return;
             }
             
-            // Deep comparison of objects
-            const serverEvents = serverData.events || {};
-            const hasChanges = !isDeepEqual(events, serverEvents);
+            // Migrate to new format and compare
+            const migratedServer = migrateEventStructure(serverData.events || {});
+            const hasChanges = !isDeepEqual(events, migratedServer);
             
             if (hasChanges) {
                 console.log('📡 Server data changed detected, updating calendar...');
-                console.log('Old local events count:', Object.keys(events).length);
-                console.log('New server events count:', Object.keys(serverEvents).length);
+                console.log('Old local entries count:', (events.entries || []).length);
+                console.log('New server entries count:', (migratedServer.entries || []).length);
                 
-                events = serverEvents;
+                events = migratedServer;
                 updateSyncStatus('synced');
                 renderCalendar();
                 if (selectedDate) {
-                    displayEntries(formatDate(selectedDate));
+                    displayEntriesForDate(selectedDate);
                 }
             }
         } catch (error) {
