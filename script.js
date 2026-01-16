@@ -5,6 +5,7 @@ let events = {};
 let syncStatus = 'synced'; // 'synced', 'syncing', 'offline', 'pending'
 let pendingSync = false;
 let currentUsername = null;
+let currentUserFullName = null;
 
 // Initialize calendar on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -29,6 +30,7 @@ async function checkAuthentication() {
         // Display user info
         document.getElementById('userDisplay').textContent = `👤 ${data.user.full_name}`;
         currentUsername = data.user.username;
+        currentUserFullName = data.user.full_name;
         
         // Show admin button if user is admin
         if (data.user.is_admin) {
@@ -329,7 +331,7 @@ function handleFormSubmit(e) {
     const entry = {
         title: title,
         description: description,
-        author: currentUsername,
+        author: currentUserFullName,
         timestamp: new Date().toISOString()
     };
     
@@ -362,11 +364,21 @@ function deleteEntry(dateKey, index) {
         return;
     }
     
+    if (!events[dateKey] || !events[dateKey][index]) {
+        console.error('Entry not found to delete');
+        alert('Entry not found');
+        return;
+    }
+    
+    console.log('Deleting entry:', { dateKey, index, entry: events[dateKey][index] });
+    
     events[dateKey].splice(index, 1);
     
     if (events[dateKey].length === 0) {
         delete events[dateKey];
     }
+    
+    console.log('Events after deletion:', events);
     
     saveEvents();
     displayEntries(dateKey);
@@ -590,6 +602,46 @@ function setupOfflineDetection() {
     if (!navigator.onLine) {
         updateSyncStatus('offline');
     }
+    
+    // Setup auto-refresh polling - check for updates every 10 seconds
+    setupAutoRefresh();
+}
+
+// Auto-refresh calendar data from server
+function setupAutoRefresh() {
+    setInterval(async () => {
+        // Only poll if online and not in the middle of a sync
+        if (navigator.onLine && syncStatus !== 'syncing') {
+            try {
+                const response = await fetch('api.php?action=get', {
+                    credentials: 'include'
+                });
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    const data = JSON.parse(text);
+                    
+                    // Check if server data differs from local data
+                    const localData = JSON.stringify(events);
+                    const serverData = JSON.stringify(data.events || {});
+                    
+                    if (localData !== serverData) {
+                        console.log('Server data changed, updating calendar...');
+                        // Merge server events with local changes
+                        const mergedEvents = mergeEvents(events, data.events || {});
+                        events = mergedEvents;
+                        renderCalendar();
+                        if (selectedDate) {
+                            displayEntries(formatDate(selectedDate));
+                        }
+                        updateSyncStatus('synced');
+                    }
+                }
+            } catch (error) {
+                console.error('Auto-refresh error:', error);
+            }
+        }
+    }, 10000); // Poll every 10 seconds
 }
 
 // Escape HTML to prevent XSS

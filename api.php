@@ -129,11 +129,14 @@ function saveEvents($dataFile) {
                 fclose($fp);
                 
                 if ($bytesWritten === false) {
+                    ob_end_clean();
                     echo json_encode([
                         'success' => false,
                         'message' => 'Failed to write to file'
                     ]);
                 } else {
+                    chmod($dataFile, 0666);
+                    ob_end_clean();
                     echo json_encode([
                         'success' => true,
                         'message' => 'Events saved successfully'
@@ -141,22 +144,26 @@ function saveEvents($dataFile) {
                 }
             } else {
                 fclose($fp);
+                ob_end_clean();
                 echo json_encode([
                     'success' => false,
                     'message' => 'Could not lock file for writing'
                 ]);
             }
         } else {
+            ob_end_clean();
             echo json_encode([
                 'success' => false,
                 'message' => 'Could not open file for writing'
             ]);
         }
     } catch (Exception $e) {
+        ob_end_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Error saving events: ' . $e->getMessage()
         ]);
     }
+    exit;
 }
 ?>
