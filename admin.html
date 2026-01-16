@@ -399,7 +399,8 @@
                 const response = await fetch('auth.php?action=current', {
                     credentials: 'include'
                 });
-                const data = await response.json();
+                const text = await response.text();
+                const data = JSON.parse(text);
                 
                 if (!data.success || !data.user.is_admin) {
                     window.location.href = 'login.html';
@@ -490,7 +491,9 @@
                     body: JSON.stringify({ username, full_name: fullName, password, is_admin: isAdmin })
                 });
                 
-                const data = await response.json();
+                const text = await response.text();
+                console.log('Add user response:', text);
+                const data = JSON.parse(text);
                 
                 if (data.success) {
                     showMessage('User created successfully!', 'success');
@@ -521,7 +524,9 @@
                     body: JSON.stringify({ username, new_password: newPassword })
                 });
                 
-                const data = await response.json();
+                const text = await response.text();
+                console.log('Change password response:', text);
+                const data = JSON.parse(text);
                 
                 if (data.success) {
                     showMessage('Password changed successfully!', 'success');
@@ -541,7 +546,23 @@
                 const response = await fetch('users.php?action=list', {
                     credentials: 'include'
                 });
-                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const text = await response.text();
+                console.log('Raw users response:', text);
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    console.error('JSON Parse Error:', parseError);
+                    console.error('Response text:', text.substring(0, 200));
+                    showMessage('Server returned invalid data', 'error');
+                    return;
+                }
                 
                 if (data.success) {
                     displayUsers(data.users);
@@ -604,7 +625,9 @@
                     body: JSON.stringify({ username })
                 });
                 
-                const data = await response.json();
+                const text = await response.text();
+                console.log('Delete user response:', text);
+                const data = JSON.parse(text);
                 
                 if (data.success) {
                     showMessage('User deleted successfully!', 'success');

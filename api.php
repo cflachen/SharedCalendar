@@ -4,6 +4,9 @@
  * Handles reading and writing calendar events to a JSON file
  */
 
+// Start output buffering to prevent any extra output before JSON
+ob_start();
+
 session_start();
 require_once 'auth.php';
 

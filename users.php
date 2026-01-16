@@ -4,6 +4,9 @@
  * Handles CRUD operations for users (admin only)
  */
 
+// Start output buffering to prevent any extra output before JSON
+ob_start();
+
 session_start();
 require_once 'auth.php';
 
