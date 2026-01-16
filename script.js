@@ -16,7 +16,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Check authentication
 async function checkAuthentication() {
     try {
-        const response = await fetch('auth.php?action=current');
+        const response = await fetch('auth.php?action=current', {
+            credentials: 'include'
+        });
         const data = await response.json();
         
         if (!data.success) {
@@ -56,7 +58,9 @@ function setupEventListeners() {
     
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         try {
-            await fetch('auth.php?action=logout');
+            await fetch('auth.php?action=logout', {
+                credentials: 'include'
+            });
             window.location.href = 'login.html';
         } catch (error) {
             console.error('Logout error:', error);
@@ -321,7 +325,9 @@ async function loadEvents() {
     try {
         updateSyncStatus('syncing');
         
-        const response = await fetch('api.php?action=get');
+        const response = await fetch('api.php?action=get', {
+            credentials: 'include'
+        });
         const data = await response.json();
         
         if (data.success) {
@@ -427,6 +433,7 @@ async function syncToServer(data) {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify({ events: data })
         });
         

@@ -396,7 +396,9 @@
         // Check authentication on load
         async function checkAuth() {
             try {
-                const response = await fetch('auth.php?action=current');
+                const response = await fetch('auth.php?action=current', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
                 
                 if (!data.success || !data.user.is_admin) {
@@ -416,7 +418,9 @@
         // Logout
         async function logout() {
             try {
-                await fetch('auth.php?action=logout');
+                await fetch('auth.php?action=logout', {
+                    credentials: 'include'
+                });
                 window.location.href = 'login.html';
             } catch (error) {
                 console.error('Logout error:', error);
@@ -437,7 +441,9 @@
         // Generate password
         async function generatePassword() {
             try {
-                const response = await fetch('users.php?action=generate_password');
+                const response = await fetch('users.php?action=generate_password', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -453,7 +459,9 @@
         // Generate password for change
         async function generatePasswordForChange() {
             try {
-                const response = await fetch('users.php?action=generate_password');
+                const response = await fetch('users.php?action=generate_password', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -478,6 +486,7 @@
                 const response = await fetch('users.php?action=add', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ username, full_name: fullName, password, is_admin: isAdmin })
                 });
                 
@@ -508,6 +517,7 @@
                 const response = await fetch('users.php?action=change_password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ username, new_password: newPassword })
                 });
                 
@@ -528,7 +538,9 @@
         // Load users
         async function loadUsers() {
             try {
-                const response = await fetch('users.php?action=list');
+                const response = await fetch('users.php?action=list', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -588,6 +600,7 @@
                 const response = await fetch('users.php?action=delete', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ username })
                 });
                 
