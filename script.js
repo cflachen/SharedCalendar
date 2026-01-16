@@ -243,6 +243,9 @@ function createDayElement(day, date, isOtherMonth) {
             const colorIndex = getColorIndexForEntry(entry.id);
             entryPreview.style.backgroundColor = colors[colorIndex];
             entryPreview.style.color = '#ffffff';
+            entryPreview.style.whiteSpace = 'normal';
+            entryPreview.style.wordWrap = 'break-word';
+            entryPreview.style.overflowWrap = 'break-word';
             entryPreview.textContent = entry.title;
             entryPreview.style.cursor = 'pointer';
             entryPreview.onclick = (e) => {
