@@ -261,7 +261,6 @@ function setupAutoRefresh() {
             const hasChanges = JSON.stringify(events) !== JSON.stringify(serverEvents);
             
             if (hasChanges) {
-                console.log('📡 Server data changed, updating list...');
                 events = serverEvents;
                 renderList();
             }

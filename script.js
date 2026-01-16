@@ -497,7 +497,6 @@ function handleFormSubmit(e) {
                 endDate: endDateInput,
                 timestamp: new Date().toISOString()
             };
-            console.log('Updated entry:', events.entries[entryIndex]);
         }
     } else {
         // CREATE new entry
@@ -511,11 +510,8 @@ function handleFormSubmit(e) {
             timestamp: new Date().toISOString()
         };
         
-        console.log('Adding new entry:', entry);
         events.entries.push(entry);
     }
-    
-    console.log('Events after submit:', events);
     
     // Save to server
     saveEvents();
@@ -546,11 +542,7 @@ function deleteEntry(entryId) {
         return;
     }
     
-    console.log('Deleting entry:', allEntries[entryIndex]);
-    
     allEntries.splice(entryIndex, 1);
-    
-    console.log('Events after deletion:', events);
     
     saveEvents();
     closeModal();
@@ -571,7 +563,6 @@ async function loadEvents() {
         }
         
         const text = await response.text();
-        console.log('Raw server response:', text);
         
         let data;
         try {
@@ -719,7 +710,6 @@ async function saveEvents() {
 async function syncToServer(data) {
     try {
         updateSyncStatus('syncing');
-        console.log('Syncing data to server:', data);
         
         const response = await fetch('api.php?action=save', {
             method: 'POST',
@@ -735,7 +725,6 @@ async function syncToServer(data) {
         }
         
         const text = await response.text();
-        console.log('Raw sync response:', text);
         
         let result;
         try {
@@ -747,8 +736,6 @@ async function syncToServer(data) {
             pendingSync = true;
             return;
         }
-        
-        console.log('Parsed sync response:', result);
         
         if (result.success) {
             updateSyncStatus('synced');
@@ -796,13 +783,11 @@ function updateSyncStatus(status) {
 // Setup offline detection
 function setupOfflineDetection() {
     window.addEventListener('online', () => {
-        console.log('Back online - syncing...');
         updateSyncStatus('syncing');
         loadEvents();
     });
     
     window.addEventListener('offline', () => {
-        console.log('Going offline');
         updateSyncStatus('offline');
     });
     
@@ -854,10 +839,6 @@ function setupAutoRefresh() {
             const hasChanges = !isDeepEqual(events, migratedServer);
             
             if (hasChanges) {
-                console.log('📡 Server data changed detected, updating calendar...');
-                console.log('Old local entries count:', (events.entries || []).length);
-                console.log('New server entries count:', (migratedServer.entries || []).length);
-                
                 events = migratedServer;
                 updateSyncStatus('synced');
                 renderCalendar();
