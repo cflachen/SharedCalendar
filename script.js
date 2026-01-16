@@ -6,6 +6,7 @@ let syncStatus = 'synced'; // 'synced', 'syncing', 'offline', 'pending'
 let pendingSync = false;
 let currentUsername = null;
 let currentUserFullName = null;
+let editingEntryId = null; // For edit mode
 
 // Initialize calendar on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -228,14 +229,15 @@ function createDayElement(day, date, isOtherMonth) {
         const entriesContainer = document.createElement('div');
         entriesContainer.className = 'day-entries';
         
-        // Color palette for overlapping events
-        const colors = ['#e8f4f8', '#e8f8e8', '#fef8e8', '#f8e8f0', '#f0e8f8'];
+        // Color palette for overlapping events - stronger, less pastel
+        const colors = ['#4da6ff', '#4dff4d', '#ffd700', '#ff6b9d', '#c77dff'];
         
         // Show first 2 entries with color coding
         dayEntries.slice(0, 2).forEach((entry, index) => {
             const entryPreview = document.createElement('div');
             entryPreview.className = 'entry-preview';
             entryPreview.style.backgroundColor = colors[index % colors.length];
+            entryPreview.style.color = '#ffffff';
             entryPreview.textContent = entry.title;
             entryPreview.style.cursor = 'pointer';
             entryPreview.onclick = (e) => {
@@ -279,6 +281,7 @@ function formatDateDisplay(date) {
 // Open modal for a specific day
 function openDayModal(date) {
     selectedDate = date;
+    editingEntryId = null; // Clear edit mode
     const modal = document.getElementById('modal');
     const dateKey = formatDate(date);
     
@@ -289,7 +292,9 @@ function openDayModal(date) {
     document.getElementById('entryForm').reset();
     const dateString = formatDate(date); // YYYY-MM-DD format
     document.getElementById('entryStartDate').value = dateString;
+    document.getElementById('entryStartDate').readOnly = true;
     document.getElementById('entryEndDate').value = dateString;
+    document.getElementById('entryEndDate').readOnly = false;
     
     // Display existing entries for this date
     displayEntriesForDate(date);
@@ -330,13 +335,14 @@ function displayEntriesForDate(date) {
             : `${formatDateDisplay(new Date(entry.startDate + 'T00:00:00'))} - ${formatDateDisplay(new Date(entry.endDate + 'T00:00:00'))}`;
         
         entryDiv.innerHTML = `
-            <h4>${escapeHtml(entry.title)}</h4>
-            <p style="font-size: 0.9em; color: #666; margin: 5px 0;"><strong>Dates:</strong> ${dateRange}</p>
-            ${entry.description ? `<p>${escapeHtml(entry.description)}</p>` : ''}
-            <div class="entry-meta">
+            <h4 style="color: #000;">${escapeHtml(entry.title)}</h4>
+            <p style="font-size: 0.9em; color: #333; margin: 5px 0;"><strong>Dates:</strong> ${dateRange}</p>
+            ${entry.description ? `<p style="color: #000;">${escapeHtml(entry.description)}</p>` : ''}
+            <div class="entry-meta" style="color: #666;">
                 Added by ${escapeHtml(entry.author)} on ${new Date(entry.timestamp).toLocaleString()}
             </div>
             <div class="entry-actions">
+                <button class="btn btn-primary btn-sm" onclick="editEntry(${entry.id})">Edit</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteEntry(${entry.id})">Delete</button>
             </div>
         `;
@@ -349,13 +355,45 @@ function displayEntriesForDate(date) {
 function closeModal() {
     document.getElementById('modal').style.display = 'none';
     selectedDate = null;
+    editingEntryId = null;
+}
+
+// Edit an entry
+function editEntry(entryId) {
+    editingEntryId = entryId;
+    
+    // Find the entry
+    const allEntries = events.entries || [];
+    const entry = allEntries.find(e => e.id === entryId);
+    
+    if (!entry) {
+        alert('Entry not found');
+        return;
+    }
+    
+    // Populate form with entry data
+    document.getElementById('entryTitle').value = entry.title;
+    document.getElementById('entryDescription').value = entry.description || '';
+    document.getElementById('entryStartDate').value = entry.startDate;
+    document.getElementById('entryStartDate').readOnly = false; // Allow editing start date
+    document.getElementById('entryEndDate').value = entry.endDate;
+    document.getElementById('entryEndDate').readOnly = false;
+    
+    // Update modal title
+    document.getElementById('modalTitle').textContent = 'Edit Entry';
+    
+    // Hide entries list while editing
+    document.getElementById('entriesList').style.display = 'none';
+    
+    // Focus on title field
+    document.getElementById('entryTitle').focus();
 }
 
 // Handle form submission
 function handleFormSubmit(e) {
     e.preventDefault();
     
-    if (!selectedDate) return;
+    if (!selectedDate && !editingEntryId) return;
     
     const title = document.getElementById('entryTitle').value;
     const description = document.getElementById('entryDescription').value;
@@ -376,33 +414,48 @@ function handleFormSubmit(e) {
         return;
     }
     
-    // Create entry with date range
-    const entry = {
-        id: Date.now(), // Unique ID for this entry
-        title: title,
-        description: description,
-        author: currentUserFullName,
-        startDate: startDateInput, // Store as YYYY-MM-DD string
-        endDate: endDateInput,
-        timestamp: new Date().toISOString()
-    };
-    
-    console.log('Adding entry:', entry);
-    
     // Initialize events object if needed
     if (!events.entries) {
         events.entries = [];
     }
     
-    events.entries.push(entry);
+    if (editingEntryId) {
+        // UPDATE existing entry
+        const entryIndex = events.entries.findIndex(e => e.id === editingEntryId);
+        if (entryIndex > -1) {
+            events.entries[entryIndex] = {
+                ...events.entries[entryIndex],
+                title: title,
+                description: description,
+                endDate: endDateInput,
+                timestamp: new Date().toISOString()
+            };
+            console.log('Updated entry:', events.entries[entryIndex]);
+        }
+    } else {
+        // CREATE new entry
+        const entry = {
+            id: Date.now(), // Unique ID for this entry
+            title: title,
+            description: description,
+            author: currentUserFullName,
+            startDate: startDateInput, // Store as YYYY-MM-DD string
+            endDate: endDateInput,
+            timestamp: new Date().toISOString()
+        };
+        
+        console.log('Adding new entry:', entry);
+        events.entries.push(entry);
+    }
     
-    console.log('Events after adding:', events);
+    console.log('Events after submit:', events);
     
     // Save to server
     saveEvents();
     
     // Reset form
     document.getElementById('entryForm').reset();
+    document.getElementById('entriesList').style.display = 'block';
     
     // Close modal immediately
     closeModal();
