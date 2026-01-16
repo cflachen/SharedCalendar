@@ -19,10 +19,11 @@ async function checkAuthentication() {
         const response = await fetch('auth.php?action=current', {
             credentials: 'include'
         });
-        const data = await response.json();
+        const text = await response.text();
+        const data = JSON.parse(text);
         
         if (!data.success) {
-            window.location.href = 'login.html';
+            window.location.href = 'login.html?redirect=index.html';
             return;
         }
         

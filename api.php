@@ -30,6 +30,10 @@ requireAuth();
 $dataFile = __DIR__ . '/data/events.json';
 $dataDir = __DIR__ . '/data';
 
+// Clear any buffered output and start fresh
+ob_end_clean();
+ob_start();
+
 // Ensure data directory exists
 if (!file_exists($dataDir)) {
     mkdir($dataDir, 0755, true);
@@ -47,18 +51,19 @@ $action = isset($_GET['action']) ? $_GET['action'] : '';
 switch ($action) {
     case 'get':
         getEvents($dataFile);
-        break;
+        exit;
     
     case 'save':
         saveEvents($dataFile);
-        break;
+        exit;
     
     default:
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Invalid action'
         ]);
-        break;
+        exit;
 }
 
 /**

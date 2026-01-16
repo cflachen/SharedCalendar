@@ -403,7 +403,7 @@
                 const data = JSON.parse(text);
                 
                 if (!data.success || !data.user.is_admin) {
-                    window.location.href = 'login.html';
+                    window.location.href = 'login.html?redirect=admin.html';
                     return;
                 }
                 
@@ -412,7 +412,7 @@
                 loadUsers();
             } catch (error) {
                 console.error('Auth check error:', error);
-                window.location.href = 'login.html';
+                window.location.href = 'login.html?redirect=admin.html';
             }
         }
 

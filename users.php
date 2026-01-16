@@ -25,6 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $usersFile = __DIR__ . '/data/users.json';
 
+// Clear any buffered output and start fresh
+ob_end_clean();
+ob_start();
+
 // Get action from query parameter
 $action = isset($_GET['action']) ? $_GET['action'] : '';
 
@@ -37,29 +41,30 @@ switch ($action) {
     case 'add':
         requireAdmin();
         addUser($usersFile);
-        break;
+        exit;
     
     case 'delete':
         requireAdmin();
         deleteUser($usersFile);
-        break;
+        exit;
     
     case 'change_password':
         requireAuth();
         changePassword($usersFile);
-        break;
+        exit;
     
     case 'generate_password':
         requireAdmin();
         generatePassword();
-        break;
+        exit;
     
     default:
+        ob_clean();
         echo json_encode([
             'success' => false,
             'message' => 'Invalid action'
         ]);
-        break;
+        exit;
 }
 
 /**

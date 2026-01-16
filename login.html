@@ -157,6 +157,16 @@
     </div>
 
     <script>
+        // Get redirect parameter from URL
+        function getRedirectUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const redirect = params.get('redirect');
+            if (redirect && (redirect === 'admin.html' || redirect === 'index.html')) {
+                return redirect;
+            }
+            return null;
+        }
+        
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -179,14 +189,21 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include',
                     body: JSON.stringify({ username, password })
                 });
                 
-                const data = await response.json();
+                const text = await response.text();
+                const data = JSON.parse(text);
                 
                 if (data.success) {
-                    // Redirect to calendar or admin page
-                    if (data.user.is_admin) {
+                    // Check if there's a requested redirect URL
+                    const requestedRedirect = getRedirectUrl();
+                    
+                    // Redirect to requested page or default based on role
+                    if (requestedRedirect) {
+                        window.location.href = requestedRedirect;
+                    } else if (data.user.is_admin) {
                         window.location.href = 'admin.html';
                     } else {
                         window.location.href = 'index.html';
