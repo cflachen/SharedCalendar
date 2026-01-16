@@ -9,7 +9,6 @@ let currentUsername = null;
 // Initialize calendar on page load
 document.addEventListener('DOMContentLoaded', function() {
     checkAuthentication();
-    setupEventListeners();
     setupOfflineDetection();
 });
 
@@ -50,48 +49,75 @@ async function checkAuthentication() {
 
 // Setup event listeners
 function setupEventListeners() {
-    document.getElementById('prevMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() - 1);
-        renderCalendar();
-    });
+    // Only set up calendar listeners if we're on the calendar page
+    const prevMonth = document.getElementById('prevMonth');
+    if (prevMonth) {
+        prevMonth.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        });
+    }
 
-    document.getElementById('nextMonth').addEventListener('click', () => {
-        currentDate.setMonth(currentDate.getMonth() + 1);
-        renderCalendar();
-    });
+    const nextMonth = document.getElementById('nextMonth');
+    if (nextMonth) {
+        nextMonth.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+    }
     
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-        try {
-            await fetch('auth.php?action=logout', {
-                credentials: 'include'
-            });
-            window.location.href = 'login.html';
-        } catch (error) {
-            console.error('Logout error:', error);
-            window.location.href = 'login.html';
-        }
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await fetch('auth.php?action=logout', {
+                    credentials: 'include'
+                });
+                window.location.href = 'login.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                window.location.href = 'login.html';
+            }
+        });
+    }
     
-    document.getElementById('adminBtn').addEventListener('click', () => {
-        window.location.href = 'admin.html';
-    });
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', () => {
+            window.location.href = 'admin.html';
+        });
+    }
 
     // Sync status click handler
-    document.getElementById('syncStatus').addEventListener('click', () => {
-        if (syncStatus === 'pending' || syncStatus === 'offline') {
-            loadEvents();
-        }
-    });
+    const syncStatus = document.getElementById('syncStatus');
+    if (syncStatus) {
+        syncStatus.addEventListener('click', () => {
+            if (syncStatus === 'pending' || syncStatus === 'offline') {
+                loadEvents();
+            }
+        });
+    }
 
     // Modal controls
-    document.querySelector('.close').addEventListener('click', closeModal);
-    document.getElementById('cancelBtn').addEventListener('click', closeModal);
-    document.getElementById('entryForm').addEventListener('submit', handleFormSubmit);
+    const closeBtn = document.querySelector('.close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
+    }
+    
+    const cancelBtn = document.getElementById('cancelBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeModal);
+    }
+    
+    const entryForm = document.getElementById('entryForm');
+    if (entryForm) {
+        entryForm.addEventListener('submit', handleFormSubmit);
+    }
     
     // Close modal when clicking outside
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('modal');
-        if (e.target === modal) {
+        if (modal && e.target === modal) {
             closeModal();
         }
     });
