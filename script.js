@@ -35,6 +35,9 @@ async function checkAuthentication() {
             document.getElementById('adminBtn').style.display = 'inline-block';
         }
         
+        // Now that DOM is ready, setup listeners
+        setupEventListeners();
+        
         // Load calendar
         loadEvents();
         renderCalendar();
@@ -332,7 +335,26 @@ async function loadEvents() {
         const response = await fetch('api.php?action=get', {
             credentials: 'include'
         });
-        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log('Raw server response:', text);
+        
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            console.error('Response text:', text.substring(0, 200));
+            updateSyncStatus('offline');
+            const localEvents = getLocalEvents();
+            events = localEvents;
+            renderCalendar();
+            return;
+        }
         
         if (data.success) {
             const serverEvents = data.events || {};
@@ -431,8 +453,9 @@ async function saveEvents() {
 async function syncToServer(data) {
     try {
         updateSyncStatus('syncing');
-                console.log('Syncing data to server:', data);
-                const response = await fetch('api.php?action=save', {
+        console.log('Syncing data to server:', data);
+        
+        const response = await fetch('api.php?action=save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -441,7 +464,25 @@ async function syncToServer(data) {
             body: JSON.stringify({ events: data })
         });
         
-        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const text = await response.text();
+        console.log('Raw sync response:', text);
+        
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (parseError) {
+            console.error('JSON Parse Error:', parseError);
+            console.error('Response text:', text.substring(0, 200));
+            updateSyncStatus('pending');
+            pendingSync = true;
+            return;
+        }
+        
+        console.log('Parsed sync response:', result);
         
         if (result.success) {
             updateSyncStatus('synced');

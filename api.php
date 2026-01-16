@@ -94,8 +94,7 @@ function saveEvents($dataFile) {
         if (!isset($data['events'])) {
             echo json_encode([
                 'success' => false,
-                'message' => 'No events data provided',
-                'debug' => 'events key not found in request'
+                'message' => 'No events data provided'
             ]);
             return;
         }
@@ -107,8 +106,7 @@ function saveEvents($dataFile) {
         if (!is_array($events)) {
             echo json_encode([
                 'success' => false,
-                'message' => 'Events must be an object/array',
-                'debug' => 'events type: ' . gettype($events)
+                'message' => 'Events must be an object/array'
             ]);
             return;
         }
@@ -130,8 +128,7 @@ function saveEvents($dataFile) {
                 } else {
                     echo json_encode([
                         'success' => true,
-                        'message' => 'Events saved successfully',
-                        'debug' => "Wrote $bytesWritten bytes"
+                        'message' => 'Events saved successfully'
                     ]);
                 }
             } else {
