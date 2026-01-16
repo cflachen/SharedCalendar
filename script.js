@@ -35,6 +35,9 @@ async function checkAuthentication() {
             document.getElementById('adminBtn').style.display = 'inline-block';
         }
         
+        // Load calendar title
+        await loadCalendarTitle();
+        
         // Now that DOM is ready, setup listeners
         setupEventListeners();
         
@@ -44,6 +47,23 @@ async function checkAuthentication() {
     } catch (error) {
         console.error('Auth check error:', error);
         window.location.href = 'login.html';
+    }
+}
+
+// Load calendar title from settings
+async function loadCalendarTitle() {
+    try {
+        const response = await fetch('settings.php?action=getTitle', {
+            credentials: 'include'
+        });
+        const text = await response.text();
+        const data = JSON.parse(text);
+        const titleElement = document.getElementById('calendarTitle');
+        if (titleElement && data.calendar_title) {
+            titleElement.textContent = data.calendar_title;
+        }
+    } catch (error) {
+        console.error('Error loading calendar title:', error);
     }
 }
 
@@ -305,12 +325,11 @@ function handleFormSubmit(e) {
     
     const title = document.getElementById('entryTitle').value;
     const description = document.getElementById('entryDescription').value;
-    const author = document.getElementById('entryAuthor').value;
     
     const entry = {
         title: title,
         description: description,
-        author: author,
+        author: currentUsername,
         timestamp: new Date().toISOString()
     };
     

@@ -10,7 +10,7 @@
     <div class="container">
         <header>
             <div class="header-top">
-                <h1>Shared Calendar</h1>
+                <h1 id="calendarTitle">Shared Calendar</h1>
                 <div class="user-actions">                    <span id=\"syncStatus\" class=\"sync-status status-synced\">✓ Synced</span>                    <span id="userDisplay" class="user-display"></span>
                     <button id="adminBtn" class="btn-admin" style="display: none;">Admin Panel</button>
                     <button id="logoutBtn" class="btn-logout">Logout</button>
@@ -41,11 +41,6 @@
                     <div class="form-group">
                         <label for="entryDescription">Description:</label>
                         <textarea id="entryDescription" rows="4"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="entryAuthor">Your Name:</label>
-                        <input type="text" id="entryAuthor" required>
                     </div>
                     
                     <div class="button-group">

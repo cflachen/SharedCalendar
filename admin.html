@@ -300,6 +300,20 @@
         <div class="content">
             <div id="message" class="message"></div>
 
+            <!-- Calendar Settings Section -->
+            <div class="section">
+                <h2>⚙️ Calendar Settings</h2>
+                <form id="settingsForm">
+                    <div class="form-group">
+                        <label for="calendarTitle">Calendar Title</label>
+                        <input type="text" id="calendarTitle" required>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+
             <!-- Add User Section -->
             <div class="section">
                 <h2>Add New User</h2>
@@ -648,8 +662,52 @@
             return div.innerHTML;
         }
 
+        // Load calendar settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('settings.php?action=getTitle', {
+                    credentials: 'include'
+                });
+                const text = await response.text();
+                const data = JSON.parse(text);
+                document.getElementById('calendarTitle').value = data.calendar_title || 'Shared Calendar';
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Handle settings form submission
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('calendarTitle').value;
+            
+            try {
+                const formData = new FormData();
+                formData.append('title', title);
+                
+                const response = await fetch('settings.php?action=setTitle', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                
+                const text = await response.text();
+                const data = JSON.parse(text);
+                
+                if (data.success) {
+                    showMessage('Calendar title updated successfully!', 'success');
+                } else {
+                    showMessage(data.message || 'Error updating title', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating settings:', error);
+                showMessage('Connection error', 'error');
+            }
+        });
+
         // Initialize
         checkAuth();
+        loadSettings();
     </script>
 </body>
 </html>
