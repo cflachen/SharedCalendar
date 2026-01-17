@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const year = urlParams.get('year');
     const month = urlParams.get('month');
-    const editId = urlParams.get('edit');
     
     if (year && month) {
         currentDate = new Date(parseInt(year), parseInt(month), 1);
@@ -22,22 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     checkAuthentication();
     setupOfflineDetection();
-    
-    // If edit parameter is present, open edit mode after loading
-    if (editId) {
-        // Wait for events to load, then trigger edit
-        setTimeout(() => {
-            const entryId = parseInt(editId);
-            const entry = events.entries?.find(e => e.id === entryId);
-            if (entry) {
-                // Open the modal for the entry's start date
-                const entryDate = new Date(entry.startDate + 'T00:00:00');
-                openDayModal(entryDate);
-                // Small delay to ensure modal is open
-                setTimeout(() => editEntry(entryId), 100);
-            }
-        }, 500);
-    }
 });
 
 // Check authentication
@@ -71,8 +54,23 @@ async function checkAuthentication() {
         setupEventListeners();
         
         // Load calendar
-        loadEvents();
+        await loadEvents();
         renderCalendar();
+        
+        // Handle edit parameter from URL (from list view)
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('edit');
+        if (editId) {
+            const entryId = parseInt(editId);
+            const entry = events.entries?.find(e => e.id === entryId);
+            if (entry) {
+                // Open the modal for the entry's start date
+                const entryDate = new Date(entry.startDate + 'T00:00:00');
+                openDayModal(entryDate);
+                // Small delay to ensure modal is open, then trigger edit
+                setTimeout(() => editEntry(entryId), 100);
+            }
+        }
     } catch (error) {
         console.error('Auth check error:', error);
         window.location.href = 'login.html';
