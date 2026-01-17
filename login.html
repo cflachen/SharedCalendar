@@ -194,11 +194,9 @@
                     // Check if there's a requested redirect URL
                     const requestedRedirect = getRedirectUrl();
                     
-                    // Redirect to requested page or default based on role
+                    // Redirect to requested page or default to calendar view
                     if (requestedRedirect) {
                         window.location.href = requestedRedirect;
-                    } else if (data.user.is_admin) {
-                        window.location.href = 'admin.html';
                     } else {
                         window.location.href = 'index.html';
                     }

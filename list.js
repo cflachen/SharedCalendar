@@ -6,6 +6,14 @@ let currentUserFullName = null;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Load saved date from URL parameter if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const year = urlParams.get('year');
+    const month = urlParams.get('month');
+    if (year && month) {
+        currentDate = new Date(parseInt(year), parseInt(month), 1);
+    }
+    
     checkAuthentication();
 });
 
@@ -65,7 +73,20 @@ async function loadCalendarTitle() {
 
 // Setup event listeners
 function setupEventListeners() {
-    // Navigation buttons
+    // Year navigation buttons
+    document.getElementById('prevYear').addEventListener('click', function() {
+        currentDate.setFullYear(currentDate.getFullYear() - 1);
+        updateMonthDisplay();
+        renderList();
+    });
+    
+    document.getElementById('nextYear').addEventListener('click', function() {
+        currentDate.setFullYear(currentDate.getFullYear() + 1);
+        updateMonthDisplay();
+        renderList();
+    });
+    
+    // Month navigation buttons
     document.getElementById('prevMonth').addEventListener('click', function() {
         currentDate.setMonth(currentDate.getMonth() - 1);
         updateMonthDisplay();
@@ -78,9 +99,18 @@ function setupEventListeners() {
         renderList();
     });
     
+    // Today button
+    document.getElementById('todayBtn').addEventListener('click', function() {
+        currentDate = new Date();
+        updateMonthDisplay();
+        renderList();
+    });
+    
     // Calendar view button
     document.getElementById('calendarBtn').addEventListener('click', function() {
-        window.location.href = 'index.html';
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        window.location.href = `index.html?year=${year}&month=${month}`;
     });
     
     // Logout button

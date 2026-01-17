@@ -10,6 +10,14 @@ let editingEntryId = null; // For edit mode
 
 // Initialize calendar on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Load saved date from URL parameter if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const year = urlParams.get('year');
+    const month = urlParams.get('month');
+    if (year && month) {
+        currentDate = new Date(parseInt(year), parseInt(month), 1);
+    }
+    
     checkAuthentication();
     setupOfflineDetection();
 });
@@ -73,6 +81,14 @@ async function loadCalendarTitle() {
 // Setup event listeners
 function setupEventListeners() {
     // Only set up calendar listeners if we're on the calendar page
+    const prevYear = document.getElementById('prevYear');
+    if (prevYear) {
+        prevYear.addEventListener('click', () => {
+            currentDate.setFullYear(currentDate.getFullYear() - 1);
+            renderCalendar();
+        });
+    }
+
     const prevMonth = document.getElementById('prevMonth');
     if (prevMonth) {
         prevMonth.addEventListener('click', () => {
@@ -85,6 +101,22 @@ function setupEventListeners() {
     if (nextMonth) {
         nextMonth.addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        });
+    }
+
+    const nextYear = document.getElementById('nextYear');
+    if (nextYear) {
+        nextYear.addEventListener('click', () => {
+            currentDate.setFullYear(currentDate.getFullYear() + 1);
+            renderCalendar();
+        });
+    }
+
+    const todayBtn = document.getElementById('todayBtn');
+    if (todayBtn) {
+        todayBtn.addEventListener('click', () => {
+            currentDate = new Date();
             renderCalendar();
         });
     }
@@ -115,7 +147,9 @@ function setupEventListeners() {
     const listViewBtn = document.getElementById('listViewBtn');
     if (listViewBtn) {
         listViewBtn.addEventListener('click', () => {
-            window.location.href = 'list.html';
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            window.location.href = `list.html?year=${year}&month=${month}`;
         });
     }
 
