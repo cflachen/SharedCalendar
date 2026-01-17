@@ -220,6 +220,7 @@ function renderList() {
     
     monthEntries.forEach(entry => {
         const isMultiDay = entry.startDate !== entry.endDate;
+        const addedDate = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown';
         
         html += `
             <div class="event-list-item">
@@ -229,7 +230,11 @@ function renderList() {
                     ${isMultiDay ? `<br><span class="date-label">End:</span> ${formatDateDisplay(entry.endDate)}` : ''}
                 </div>
                 ${entry.description ? `<div class="event-list-description">${escapeHtml(entry.description)}</div>` : ''}
-                <div class="event-list-author">Added by: ${escapeHtml(entry.author || 'Unknown')}</div>
+                <div class="event-list-author">Added by ${escapeHtml(entry.author || 'Unknown')} on ${addedDate}</div>
+                <div class="entry-actions" style="margin-top: 10px;">
+                    <button class="btn btn-primary btn-sm" onclick="editEntry(${entry.id})">Edit</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEntry(${entry.id})">Delete</button>
+                </div>
             </div>
         `;
     });
@@ -244,6 +249,69 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Edit an entry - redirect to calendar view with edit mode
+function editEntry(entryId) {
+    // Store the entry ID and current date in URL parameters
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // Find the entry to get its start date
+    const entry = events.entries.find(e => e.id === entryId);
+    if (entry) {
+        // Navigate to calendar view on the entry's start date with edit mode
+        const entryDate = new Date(entry.startDate + 'T00:00:00');
+        window.location.href = `index.html?year=${entryDate.getFullYear()}&month=${entryDate.getMonth()}&edit=${entryId}`;
+    }
+}
+
+// Delete an entry
+async function deleteEntry(entryId) {
+    if (!confirm('Are you sure you want to delete this entry?')) {
+        return;
+    }
+    
+    const allEntries = events.entries || [];
+    const entryIndex = allEntries.findIndex(e => e.id === entryId);
+    
+    if (entryIndex === -1) {
+        console.error('Entry not found to delete:', entryId);
+        alert('Entry not found');
+        return;
+    }
+    
+    allEntries.splice(entryIndex, 1);
+    
+    // Save to server
+    try {
+        const response = await fetch('api.php?action=save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ events: events })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Refresh the list
+            renderList();
+        } else {
+            alert('Failed to delete entry: ' + (data.message || 'Unknown error'));
+            // Reload events to restore state
+            await loadEvents();
+            renderList();
+        }
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        alert('Failed to delete entry. Please try again.');
+        // Reload events to restore state
+        await loadEvents();
+        renderList();
+    }
 }
 
 // Global polling interval ID

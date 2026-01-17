@@ -14,12 +14,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const year = urlParams.get('year');
     const month = urlParams.get('month');
+    const editId = urlParams.get('edit');
+    
     if (year && month) {
         currentDate = new Date(parseInt(year), parseInt(month), 1);
     }
     
     checkAuthentication();
     setupOfflineDetection();
+    
+    // If edit parameter is present, open edit mode after loading
+    if (editId) {
+        // Wait for events to load, then trigger edit
+        setTimeout(() => {
+            const entryId = parseInt(editId);
+            const entry = events.entries?.find(e => e.id === entryId);
+            if (entry) {
+                // Open the modal for the entry's start date
+                const entryDate = new Date(entry.startDate + 'T00:00:00');
+                openDayModal(entryDate);
+                // Small delay to ensure modal is open
+                setTimeout(() => editEntry(entryId), 100);
+            }
+        }, 500);
+    }
 });
 
 // Check authentication
@@ -388,6 +406,12 @@ function openDayModal(date) {
     document.getElementById('modalTitle').textContent = 'Entries for ' + formatDateDisplay(date);
     document.getElementById('modalDate').textContent = '';
     
+    // Reset submit button text
+    const submitBtn = document.querySelector('#entryForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Add';
+    }
+    
     // Reset form and set default dates
     document.getElementById('entryForm').reset();
     const dateString = formatDate(date); // YYYY-MM-DD format
@@ -456,6 +480,12 @@ function closeModal() {
     document.getElementById('modal').style.display = 'none';
     selectedDate = null;
     editingEntryId = null;
+    
+    // Reset submit button text
+    const submitBtn = document.querySelector('#entryForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Add';
+    }
 }
 
 // Edit an entry
@@ -481,6 +511,12 @@ function editEntry(entryId) {
     
     // Update modal title
     document.getElementById('modalTitle').textContent = 'Edit Entry';
+    
+    // Update submit button text
+    const submitBtn = document.querySelector('#entryForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.textContent = 'Update';
+    }
     
     // Hide entries list while editing
     document.getElementById('entriesList').style.display = 'none';
@@ -830,7 +866,7 @@ function setupOfflineDetection() {
         updateSyncStatus('offline');
     }
     
-    // Setup auto-refresh polling - check for updates every 10 seconds
+    // Setup auto-refresh polling - check for updates every 30 seconds
     setupAutoRefresh();
 }
 
@@ -883,7 +919,7 @@ function setupAutoRefresh() {
         } catch (error) {
             console.error('Poll error:', error);
         }
-    }, 5000); // Poll every 5 seconds
+    }, 30000); // Poll every 30 seconds
 }
 
 // Deep comparison of two objects
