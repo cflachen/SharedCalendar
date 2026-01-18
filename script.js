@@ -7,6 +7,7 @@ let pendingSync = false;
 let currentUsername = null;
 let currentUserFullName = null;
 let editingEntryId = null; // For edit mode
+let entryIdCounter = 0; // Counter to ensure unique IDs
 
 // Initialize calendar on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -418,10 +419,10 @@ function openDayModal(date) {
     document.getElementById('entryEndDate').value = dateString;
     document.getElementById('entryEndDate').readOnly = false;
     
-    // Display existing entries for this date
-    displayEntriesForDate(date);
-    
     modal.style.display = 'block';
+    
+    // Load fresh data from server for this date to ensure we're not showing stale entries
+    loadFreshEntriesForDate(date);
     
     // Set focus to title field for quick data entry
     setTimeout(() => {
@@ -435,13 +436,40 @@ function displayEntries(dateKey) {
     // New function uses displayEntriesForDate instead
 }
 
+// Load fresh entries from server for a specific date
+async function loadFreshEntriesForDate(date) {
+    try {
+        const response = await fetch('api.php?action=get', {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            // Fall back to displaying local entries if server fails
+            displayEntriesForDate(date);
+            return;
+        }
+        
+        const data = await response.json();
+        const serverEvents = data.success ? (data.events || {}) : {};
+        
+        // Display entries from fresh server data
+        displayEntriesForDate(date, serverEvents);
+    } catch (error) {
+        console.error('Error loading fresh entries:', error);
+        // Fall back to displaying local entries
+        displayEntriesForDate(date);
+    }
+}
+
 // Display entries that overlap with a specific date
-function displayEntriesForDate(date) {
+function displayEntriesForDate(date, eventsOverride) {
+    // Use provided events data (from server) or fall back to local cache
+    const entriesToUse = eventsOverride || events;
     const entriesList = document.getElementById('entriesList');
     const dateString = formatDate(date);
     
     // Get all entries that overlap with this date
-    const allEntries = events.entries || [];
+    const allEntries = entriesToUse.entries || [];
     const dayEntries = allEntries.filter(entry => {
         return entry.startDate <= dateString && entry.endDate >= dateString;
     });
@@ -829,6 +857,16 @@ function isEqual(obj1, obj2) {
     return JSON.stringify(obj1) === JSON.stringify(obj2);
 }
 
+// Generate a unique ID for new entries
+// Combines timestamp, random number, and counter to prevent collisions
+function generateUniqueId() {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    const counter = entryIdCounter++;
+    // Format: timestamp + random (4 digits) + counter (padded to 3 digits)
+    return timestamp * 10000000 + random * 1000 + (counter % 1000);
+}
+
 // Save events locally first, then sync to server atomically
 async function saveEvents() {
     // Always save locally first
@@ -924,7 +962,7 @@ async function atomicSaveToServer(change) {
                 } else {
                     // ADD: Just add to server data
                     const newEntry = {
-                        id: Date.now(),
+                        id: generateUniqueId(),
                         author: currentUserFullName,
                         ...change.newData
                     };
