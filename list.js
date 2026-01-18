@@ -272,45 +272,99 @@ async function deleteEntry(entryId) {
         return;
     }
     
-    const allEntries = events.entries || [];
-    const entryIndex = allEntries.findIndex(e => e.id === entryId);
-    
-    if (entryIndex === -1) {
-        console.error('Entry not found to delete:', entryId);
-        alert('Entry not found');
-        return;
-    }
-    
-    allEntries.splice(entryIndex, 1);
-    
-    // Save to server
     try {
-        const response = await fetch('api.php?action=save', {
+        // Step 1: Acquire lock
+        const lockResponse = await fetch('api.php?action=acquireLock', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const lockResult = await lockResponse.json();
+        
+        if (!lockResult.success) {
+            alert('Unable to acquire lock. Please try again.');
+            return;
+        }
+        
+        // Step 2: Load latest data from server
+        const getResponse = await fetch('api.php?action=get', {
+            credentials: 'include'
+        });
+        
+        const getData = await getResponse.json();
+        
+        if (!getData.success) {
+            await releaseLock();
+            alert('Failed to load latest data.');
+            return;
+        }
+        
+        const latestEvents = getData.events || { entries: [] };
+        
+        if (!latestEvents.entries) {
+            latestEvents.entries = [];
+        }
+        
+        // Step 3: Delete the entry from latest data
+        const entryIndex = latestEvents.entries.findIndex(e => e.id === entryId);
+        
+        if (entryIndex === -1) {
+            await releaseLock();
+            alert('Entry not found in latest data.');
+            return;
+        }
+        
+        latestEvents.entries.splice(entryIndex, 1);
+        
+        // Step 4: Save back to server
+        const saveResponse = await fetch('api.php?action=save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             credentials: 'include',
-            body: JSON.stringify({ events: events })
+            body: JSON.stringify({ events: latestEvents })
         });
         
-        const data = await response.json();
+        const saveData = await saveResponse.json();
         
-        if (data.success) {
-            // Refresh the list
+        // Step 5: Release lock
+        await releaseLock();
+        
+        if (saveData.success) {
+            // Update local data and refresh display
+            events = latestEvents;
             renderList();
         } else {
-            alert('Failed to delete entry: ' + (data.message || 'Unknown error'));
-            // Reload events to restore state
+            alert('Failed to delete entry: ' + (saveData.message || 'Unknown error'));
             await loadEvents();
             renderList();
         }
     } catch (error) {
         console.error('Error deleting entry:', error);
+        
+        // Try to release lock
+        try {
+            await releaseLock();
+        } catch (releaseError) {
+            console.error('Error releasing lock:', releaseError);
+        }
+        
         alert('Failed to delete entry. Please try again.');
-        // Reload events to restore state
         await loadEvents();
         renderList();
+    }
+}
+
+// Release lock helper
+async function releaseLock() {
+    try {
+        await fetch('api.php?action=releaseLock', {
+            method: 'GET',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error('Error releasing lock:', error);
     }
 }
 

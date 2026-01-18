@@ -57,6 +57,18 @@ switch ($action) {
         saveEvents($dataFile);
         exit;
     
+    case 'acquireLock':
+        acquireLock($dataDir);
+        exit;
+    
+    case 'releaseLock':
+        releaseLock($dataDir);
+        exit;
+    
+    case 'checkLock':
+        checkLock($dataDir);
+        exit;
+    
     default:
         ob_clean();
         echo json_encode([
@@ -165,5 +177,119 @@ function saveEvents($dataFile) {
         ]);
     }
     exit;
+}
+
+/**
+ * Acquire a lock for atomic operations
+ */
+function acquireLock($dataDir) {
+    $lockFile = $dataDir . '/calendar.lock';
+    $maxLockAge = 10; // seconds - max age before lock can be taken over
+    
+    try {
+        // Check if lock exists
+        if (file_exists($lockFile)) {
+            $lockData = json_decode(file_get_contents($lockFile), true);
+            $lockTime = $lockData['timestamp'] ?? 0;
+            $currentTime = time();
+            
+            // If lock is older than max age, we can take it over
+            if (($currentTime - $lockTime) < $maxLockAge) {
+                ob_end_clean();
+                echo json_encode([
+                    'success' => false,
+                    'locked' => true,
+                    'message' => 'Resource is locked',
+                    'lockAge' => $currentTime - $lockTime,
+                    'retryAfter' => $maxLockAge - ($currentTime - $lockTime)
+                ]);
+                return;
+            }
+            // Lock is stale, we'll take it over
+        }
+        
+        // Create/update lock file
+        $lockData = [
+            'timestamp' => time(),
+            'user' => $_SESSION['username'] ?? 'unknown',
+            'sessionId' => session_id()
+        ];
+        
+        file_put_contents($lockFile, json_encode($lockData, JSON_PRETTY_PRINT));
+        chmod($lockFile, 0666);
+        
+        ob_end_clean();
+        echo json_encode([
+            'success' => true,
+            'message' => 'Lock acquired',
+            'lockData' => $lockData
+        ]);
+    } catch (Exception $e) {
+        ob_end_clean();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error acquiring lock: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Release a lock
+ */
+function releaseLock($dataDir) {
+    $lockFile = $dataDir . '/calendar.lock';
+    
+    try {
+        if (file_exists($lockFile)) {
+            unlink($lockFile);
+        }
+        
+        ob_end_clean();
+        echo json_encode([
+            'success' => true,
+            'message' => 'Lock released'
+        ]);
+    } catch (Exception $e) {
+        ob_end_clean();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error releasing lock: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Check lock status
+ */
+function checkLock($dataDir) {
+    $lockFile = $dataDir . '/calendar.lock';
+    
+    try {
+        if (file_exists($lockFile)) {
+            $lockData = json_decode(file_get_contents($lockFile), true);
+            $currentTime = time();
+            $lockAge = $currentTime - ($lockData['timestamp'] ?? 0);
+            
+            ob_end_clean();
+            echo json_encode([
+                'success' => true,
+                'locked' => true,
+                'lockAge' => $lockAge,
+                'lockData' => $lockData
+            ]);
+        } else {
+            ob_end_clean();
+            echo json_encode([
+                'success' => true,
+                'locked' => false
+            ]);
+        }
+    } catch (Exception $e) {
+        ob_end_clean();
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error checking lock: ' . $e->getMessage()
+        ]);
+    }
 }
 ?>

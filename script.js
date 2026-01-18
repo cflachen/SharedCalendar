@@ -524,7 +524,7 @@ function editEntry(entryId) {
 }
 
 // Handle form submission
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
     if (!selectedDate && !editingEntryId) return;
@@ -581,8 +581,8 @@ function handleFormSubmit(e) {
         events.entries.push(entry);
     }
     
-    // Save to server
-    saveEvents();
+    // Save to server atomically
+    await saveEvents();
     
     // Reset form
     document.getElementById('entryForm').reset();
@@ -591,12 +591,13 @@ function handleFormSubmit(e) {
     // Close modal immediately
     closeModal();
     
-    // Update display
+    // Update display - renderCalendar is already called in atomicSaveToServer after merge
+    // but call it here too in case save failed
     renderCalendar();
 }
 
 // Delete an entry
-function deleteEntry(entryId) {
+async function deleteEntry(entryId) {
     if (!confirm('Are you sure you want to delete this entry?')) {
         return;
     }
@@ -612,7 +613,7 @@ function deleteEntry(entryId) {
     
     allEntries.splice(entryIndex, 1);
     
-    saveEvents();
+    await saveEvents();
     closeModal();
     renderCalendar();
 }
@@ -765,13 +766,125 @@ function isEqual(obj1, obj2) {
     return JSON.stringify(obj1) === JSON.stringify(obj2);
 }
 
-// Save events locally first, then sync to server
+// Save events locally first, then sync to server atomically
 async function saveEvents() {
     // Always save locally first
     saveLocalEvents(events);
     
-    // Try to sync to server
-    await syncToServer(events);
+    // Try atomic save to server
+    await atomicSaveToServer();
+}
+
+// Atomic save to server with locking
+async function atomicSaveToServer() {
+    const maxRetries = 15; // Up to 15 retries (could take ~10 seconds with delays)
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+        try {
+            updateSyncStatus('syncing');
+            
+            // Step 1: Try to acquire lock
+            const lockResponse = await fetch('api.php?action=acquireLock', {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            const lockResult = await lockResponse.json();
+            
+            if (!lockResult.success) {
+                // Lock is held by another client
+                if (lockResult.retryAfter && lockResult.retryAfter > 0) {
+                    // Wait and retry
+                    const waitTime = Math.min(lockResult.retryAfter * 1000, 1000); // Max 1 second wait
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    retryCount++;
+                    continue;
+                } else {
+                    throw new Error('Failed to acquire lock: ' + lockResult.message);
+                }
+            }
+            
+            // Step 2: Load latest data from server
+            const getResponse = await fetch('api.php?action=get', {
+                credentials: 'include'
+            });
+            
+            if (!getResponse.ok) {
+                // Release lock before throwing
+                await releaseLock();
+                throw new Error(`HTTP ${getResponse.status}`);
+            }
+            
+            const getData = await getResponse.json();
+            const serverEvents = getData.success ? (getData.events || {}) : {};
+            
+            // Step 3: Merge with local changes
+            const mergedEvents = mergeEvents(serverEvents, events);
+            
+            // Step 4: Save merged data
+            const saveResponse = await fetch('api.php?action=save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ events: mergedEvents })
+            });
+            
+            const saveResult = await saveResponse.json();
+            
+            // Step 5: Release lock
+            await releaseLock();
+            
+            if (saveResult.success) {
+                // Update local events with merged data
+                events = mergedEvents;
+                saveLocalEvents(events);
+                updateSyncStatus('synced');
+                pendingSync = false;
+                
+                // Refresh display to show any merged changes
+                renderCalendar();
+                return;
+            } else {
+                throw new Error('Save failed: ' + saveResult.message);
+            }
+            
+        } catch (error) {
+            console.error('Error in atomic save (attempt ' + (retryCount + 1) + '):', error);
+            
+            // Try to release lock in case of error
+            try {
+                await releaseLock();
+            } catch (releaseError) {
+                console.error('Error releasing lock:', releaseError);
+            }
+            
+            retryCount++;
+            
+            if (retryCount >= maxRetries) {
+                updateSyncStatus('pending');
+                pendingSync = true;
+                return;
+            }
+            
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+}
+
+// Release lock helper
+async function releaseLock() {
+    try {
+        await fetch('api.php?action=releaseLock', {
+            method: 'GET',
+            credentials: 'include'
+        });
+    } catch (error) {
+        console.error('Error releasing lock:', error);
+    }
 }
 
 // Sync events to server
