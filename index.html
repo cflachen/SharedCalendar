@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Calendar</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <h1 id="calendarTitle">Shared Calendar</h1>
+                <div class="user-actions">                    <span id=\"syncStatus\" class=\"sync-status status-synced\">✓ Synced</span>                    <span id="userDisplay" class="user-display"></span>
+                    <button id="listViewBtn" class="btn-admin">List View</button>
+                    <button id="adminBtn" class="btn-admin" style="display: none;">Admin Panel</button>
+                    <button id="logoutBtn" class="btn-logout">Logout</button>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="prevYear">&lt;&lt;</button>
+                <button id="prevMonth">&lt;</button>
+                <h2 id="currentMonth"></h2>
+                <button id="nextMonth">&gt;</button>
+                <button id="nextYear">&gt;&gt;</button>
+                <button id="todayBtn" class="btn-today">Today</button>
+            </div>
+        </header>
+
+        <div class="calendar" id="calendar"></div>
+
+        <!-- Modal for adding/editing entries -->
+        <div id="modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3 id="modalTitle">Add Entry</h3>
+                <p id="modalDate"></p>
+                
+                <form id="entryForm">
+                    <div class="form-group">
+                        <label for="entryTitle">Title:</label>
+                        <input type="text" id="entryTitle" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="entryStartDate">Start Date:</label>
+                        <input type="date" id="entryStartDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="entryEndDate">End Date:</label>
+                        <input type="date" id="entryEndDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="entryDescription">Description:</label>
+                        <textarea id="entryDescription" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">Add</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    </div>
+                </form>
+                
+                <div id="entriesList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
