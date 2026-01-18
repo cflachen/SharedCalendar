@@ -452,8 +452,17 @@ async function loadFreshEntriesForDate(date) {
         const data = await response.json();
         const serverEvents = data.success ? (data.events || {}) : {};
         
+        // Update global events object with fresh server data
+        if (serverEvents.entries) {
+            events = serverEvents;
+            saveLocalEvents(events);
+        }
+        
         // Display entries from fresh server data
         displayEntriesForDate(date, serverEvents);
+        
+        // Refresh calendar to show any new entries immediately
+        renderCalendar();
     } catch (error) {
         console.error('Error loading fresh entries:', error);
         // Fall back to displaying local entries
