@@ -310,7 +310,16 @@ async function deleteEntry(entryId) {
         
         if (entryIndex === -1) {
             await releaseLock();
-            alert('Entry not found in latest data.');
+            // Entry already deleted by another user
+            // Update local cache to match server (without merging, which could resurrect it)
+            events = latestEvents;
+            try {
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
+            renderList();
+            // No alert needed - the entry is gone which is what the user wanted
             return;
         }
         

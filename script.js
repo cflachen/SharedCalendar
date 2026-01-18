@@ -625,10 +625,13 @@ async function deleteEntry(entryId) {
         
         if (entryIndex === -1) {
             await releaseLock();
-            alert('Entry not found. It may have been deleted by another user.');
-            await loadEvents();
+            // Entry already deleted by another user
+            // Update local cache to match server (without merging, which could resurrect it)
+            events = latestEvents;
+            saveLocalEvents(events);
             closeModal();
             renderCalendar();
+            // No alert needed - the entry is gone which is what the user wanted
             return;
         }
         
