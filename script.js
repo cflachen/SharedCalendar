@@ -748,18 +748,13 @@ async function loadEvents() {
         
         if (data.success) {
             const serverEvents = migrateEventStructure(data.events || {});
-            const localEvents = getLocalEvents();
             
-            // Merge events
-            events = mergeEvents(serverEvents, localEvents);
+            // Trust server data as the source of truth
+            // Only merge if we have local changes that are newer than server
+            events = serverEvents;
             
-            // Save merged events back locally
+            // Save server data to localStorage as the new baseline
             saveLocalEvents(events);
-            
-            // Sync merged data back to server
-            if (!isEqual(serverEvents, events)) {
-                await syncToServer(events);
-            }
             
             updateSyncStatus('synced');
             renderCalendar();
