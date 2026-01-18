@@ -548,41 +548,21 @@ async function handleFormSubmit(e) {
         return;
     }
     
-    // Initialize events object if needed
-    if (!events.entries) {
-        events.entries = [];
-    }
-    
-    if (editingEntryId) {
-        // UPDATE existing entry
-        const entryIndex = events.entries.findIndex(e => e.id === editingEntryId);
-        if (entryIndex > -1) {
-            events.entries[entryIndex] = {
-                ...events.entries[entryIndex],
-                title: title,
-                description: description,
-                startDate: startDateInput,
-                endDate: endDateInput,
-                timestamp: new Date().toISOString()
-            };
-        }
-    } else {
-        // CREATE new entry
-        const entry = {
-            id: Date.now(), // Unique ID for this entry
+    // Store the changes to apply
+    const changeToApply = {
+        isEdit: !!editingEntryId,
+        entryId: editingEntryId,
+        newData: {
             title: title,
             description: description,
-            author: currentUserFullName,
-            startDate: startDateInput, // Store as YYYY-MM-DD string
+            startDate: startDateInput,
             endDate: endDateInput,
             timestamp: new Date().toISOString()
-        };
-        
-        events.entries.push(entry);
-    }
+        }
+    };
     
-    // Save to server atomically
-    await saveEvents();
+    // Save to server atomically - this will apply changes to fresh server data
+    await saveEventsWithChange(changeToApply);
     
     // Reset form
     document.getElementById('entryForm').reset();
@@ -602,20 +582,95 @@ async function deleteEntry(entryId) {
         return;
     }
     
-    const allEntries = events.entries || [];
-    const entryIndex = allEntries.findIndex(e => e.id === entryId);
-    
-    if (entryIndex === -1) {
-        console.error('Entry not found to delete:', entryId);
-        alert('Entry not found');
-        return;
+    try {
+        // Step 1: Acquire lock
+        const lockResponse = await fetch('api.php?action=acquireLock', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const lockResult = await lockResponse.json();
+        
+        if (!lockResult.success) {
+            alert('Unable to acquire lock. Please try again.');
+            return;
+        }
+        
+        // Step 2: Load latest data from server
+        const getResponse = await fetch('api.php?action=get', {
+            credentials: 'include'
+        });
+        
+        const getData = await getResponse.json();
+        
+        if (!getData.success) {
+            await releaseLock();
+            alert('Failed to load latest data.');
+            return;
+        }
+        
+        const latestEvents = getData.events || { entries: [] };
+        
+        if (!latestEvents.entries) {
+            latestEvents.entries = [];
+        }
+        
+        // Step 3: Delete the entry from latest data
+        const entryIndex = latestEvents.entries.findIndex(e => e.id === entryId);
+        
+        if (entryIndex === -1) {
+            await releaseLock();
+            alert('Entry not found. It may have been deleted by another user.');
+            await loadEvents();
+            closeModal();
+            renderCalendar();
+            return;
+        }
+        
+        latestEvents.entries.splice(entryIndex, 1);
+        
+        // Step 4: Save back to server
+        const saveResponse = await fetch('api.php?action=save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ events: latestEvents })
+        });
+        
+        const saveData = await saveResponse.json();
+        
+        // Step 5: Release lock
+        await releaseLock();
+        
+        if (saveData.success) {
+            // Update local data and refresh display
+            events = latestEvents;
+            saveLocalEvents(events);
+            closeModal();
+            renderCalendar();
+        } else {
+            alert('Failed to delete entry: ' + (saveData.message || 'Unknown error'));
+            await loadEvents();
+            closeModal();
+            renderCalendar();
+        }
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        
+        // Try to release lock
+        try {
+            await releaseLock();
+        } catch (releaseError) {
+            console.error('Error releasing lock:', releaseError);
+        }
+        
+        alert('Failed to delete entry. Please try again.');
+        await loadEvents();
+        closeModal();
+        renderCalendar();
     }
-    
-    allEntries.splice(entryIndex, 1);
-    
-    await saveEvents();
-    closeModal();
-    renderCalendar();
 }
 
 // Load events from server and merge with offline data
@@ -772,11 +827,17 @@ async function saveEvents() {
     saveLocalEvents(events);
     
     // Try atomic save to server
-    await atomicSaveToServer();
+    await atomicSaveToServer(null);
+}
+
+// Save with a specific change applied to fresh server data
+async function saveEventsWithChange(change) {
+    await atomicSaveToServer(change);
 }
 
 // Atomic save to server with locking
-async function atomicSaveToServer() {
+// If change is provided, it will be applied to fresh server data (prevents conflicts)
+async function atomicSaveToServer(change) {
     const maxRetries = 15; // Up to 15 retries (could take ~10 seconds with delays)
     let retryCount = 0;
     
@@ -817,10 +878,52 @@ async function atomicSaveToServer() {
             }
             
             const getData = await getResponse.json();
-            const serverEvents = getData.success ? (getData.events || {}) : {};
+            let serverEvents = getData.success ? (getData.events || {}) : {};
             
-            // Step 3: Merge with local changes
-            const mergedEvents = mergeEvents(serverEvents, events);
+            // Ensure proper structure
+            if (!serverEvents.entries) {
+                serverEvents.entries = [];
+            }
+            
+            // Step 3: Apply specific change to fresh server data OR merge
+            let mergedEvents;
+            
+            if (change) {
+                // Apply the specific change to fresh server data
+                if (change.isEdit) {
+                    // EDIT: Check if entry still exists on server
+                    const entryIndex = serverEvents.entries.findIndex(e => e.id === change.entryId);
+                    
+                    if (entryIndex === -1) {
+                        // Entry was deleted by another user
+                        await releaseLock();
+                        alert('This entry was deleted by another user. Your changes cannot be saved.');
+                        // Reload fresh data
+                        await loadEvents();
+                        return;
+                    }
+                    
+                    // Update the entry on server data
+                    serverEvents.entries[entryIndex] = {
+                        ...serverEvents.entries[entryIndex],
+                        ...change.newData,
+                        author: serverEvents.entries[entryIndex].author // Keep original author
+                    };
+                    mergedEvents = serverEvents;
+                } else {
+                    // ADD: Just add to server data
+                    const newEntry = {
+                        id: Date.now(),
+                        author: currentUserFullName,
+                        ...change.newData
+                    };
+                    serverEvents.entries.push(newEntry);
+                    mergedEvents = serverEvents;
+                }
+            } else {
+                // No specific change, just merge local with server
+                mergedEvents = mergeEvents(serverEvents, events);
+            }
             
             // Step 4: Save merged data
             const saveResponse = await fetch('api.php?action=save', {

@@ -334,6 +334,12 @@ async function deleteEntry(entryId) {
         if (saveData.success) {
             // Update local data and refresh display
             events = latestEvents;
+            // Save to localStorage to keep in sync
+            try {
+                localStorage.setItem('calendarEvents', JSON.stringify(events));
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
+            }
             renderList();
         } else {
             alert('Failed to delete entry: ' + (saveData.message || 'Unknown error'));
