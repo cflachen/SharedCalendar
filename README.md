@@ -4,14 +4,20 @@ A simple, collaborative web calendar where multiple users can add and edit entri
 
 ## Features
 
-- 📅 Clean, interactive monthly calendar view
-- ✏️ Multiple entries per day
-- 👥 Multi-user support with authentication
+- 📅 Clean, interactive monthly calendar view with year/month navigation
+- 📋 List view of entries for the current month
+- ✏️ Edit and delete entries from both calendar and list views
+- 👥 Multi-user support with authentication and real-time synchronization
 - 🔐 Secure login system with password hashing
-- 🔧 Admin panel for user management
-- 📱 Responsive design (works on mobile and desktop)
-- 💾 Simple JSON file storage (no database needed)
+- 🔧 Admin panel for user management (admins now land on calendar like regular users)
+- 📱 Fully responsive design with horizontal scrolling support on mobile
+- 💾 Simple JSON file storage with atomic operations and file locking
 - 🚀 Easy to deploy on any Apache server with PHP
+- 🔄 Auto-refresh every 30 seconds to show changes from other users
+- << >> Year navigation buttons to jump years quickly
+- 🎯 "Today" button to jump to current month in both views
+- 🔒 Advanced conflict detection and data integrity protection
+- ✨ Automatic focus on title field when creating entries
 
 ## Requirements
 
@@ -139,18 +145,23 @@ Edit [styles.css](styles.css) to change colors, fonts, and layout:
 ```
 calendar/
 ├── index.html          # Main calendar interface (requires login)
+├── list.html           # List view of entries (requires login)
 ├── login.html          # User login page
 ├── admin.html          # Admin panel for user management
 ├── styles.css          # All styling and responsive design
-├── script.js           # Frontend JavaScript (calendar logic, UI interactions)
-├── api.php            # Backend PHP API (handles calendar data)
-├── auth.php           # Authentication system (login/logout/sessions)
-├── users.php          # User management API (add/delete/change passwords)
-├── data/              # Data storage directory
-│   ├── events.json    # JSON file storing all calendar events
-│   ├── users.json     # JSON file storing user accounts
-│   └── .htaccess      # Security configuration for data directory
-└── README.md          # This file
+├── script.js           # Calendar frontend (calendar logic, UI, atomic saves)
+├── list.js             # List view frontend (list logic, delete operations)
+├── api.php             # Backend API (calendar data, locking mechanism)
+├── auth.php            # Authentication system (login/logout/sessions)
+├── users.php           # User management API (add/delete/change passwords)
+├── settings.php        # Settings API (calendar title)
+├── data/               # Data storage directory
+│   ├── events.json     # JSON file storing all calendar entries
+│   ├── users.json      # JSON file storing user accounts
+│   ├── settings.json   # JSON file storing app settings
+│   ├── calendar.lock   # Temporary lock file for atomic operations
+│   └── .htaccess       # Security configuration for data directory
+└── README.md           # This file
 ```
 
 ## Usage
@@ -160,29 +171,73 @@ calendar/
 1. Navigate to `login.html`
 2. Enter your username and password
 3. Click "Login"
-4. Admins will be redirected to admin panel, users to calendar
+4. You'll be redirected to the calendar view (both admins and regular users)
+
+### Calendar Navigation
+
+1. **Month Navigation:** Click `<` and `>` buttons to move between months
+2. **Year Navigation:** Click `<<` and `>>` buttons to move between years
+3. **Jump to Today:** Click the "Today" button to return to the current month
+4. **Switch Views:** Click "List View" to see all entries for the current month, or "Calendar View" to see the calendar
+   - When switching views, the current month/year is preserved
 
 ### Adding an Entry
 
 1. Click on any day in the calendar
-2. Fill out the form:
-   - **Title**: Brief description of the event
+2. The "Title" field will automatically receive focus
+3. Fill out the form:
+   - **Title**: Brief description of the event (required)
+   - **Start Date**: First day of the event (default is selected day)
+   - **End Date**: Last day of the event (can be multi-day)
    - **Description**: Optional detailed information
-   - **Your Name**: Auto-filled with your name
-3. Click "Save"
+4. Click "Add" to save
+5. The calendar updates immediately
+
+### Editing an Entry
+
+**From Calendar View:**
+1. Click on the day with the entry
+2. Click the "Edit" button on the entry
+3. Modify the details
+4. Click "Update" to save
+
+**From List View:**
+1. Find the entry in the list
+2. Click the "Edit" button
+3. You'll be taken to the calendar view with the entry open for editing
+4. Make changes and click "Update"
 
 ### Viewing Entries
 
-- Days with entries show preview badges
-- Number badge shows total entries if more than 2
-- Click on a day to see all entries
+**Calendar View:**
+- Days with entries show colored preview badges
+- Number badge shows total entries if more than 4
+- Click on a day to see all entries for that day and any overlapping entries
+
+**List View:**
+- Shows all entries for the current month
+- Displays entry dates, description, author, and timestamp
+- Includes Edit and Delete buttons for each entry
 
 ### Deleting an Entry
 
+**From Calendar View:**
 1. Click on the day with the entry
 2. Find the entry in the list
-3. Click "Delete" button
+3. Click the "Delete" button
 4. Confirm the deletion
+
+**From List View:**
+1. Find the entry in the list
+2. Click the "Delete" button
+3. Confirm the deletion
+
+### Multi-User Collaboration
+
+- Changes from other users appear automatically every 30 seconds
+- Open the add/edit modal to see the latest entries immediately
+- When editing a deleted entry, your changes will restore it
+- Edit/delete operations use atomic locking to prevent data corruption
 
 ## Troubleshooting
 
@@ -226,19 +281,40 @@ chmod 666 /path/to/calendar/data/users.json
 
 ### Data Format
 
-Events are stored in `data/events.json` as a JSON object:
+Events are stored in `data/events.json` as a JSON object with entries array:
 ```json
 {
-  "2026-01-15": [
+  "entries": [
     {
+      "id": 1705329234000123,
       "title": "Team Meeting",
       "description": "Discuss Q1 goals",
       "author": "John Doe",
+      "startDate": "2026-01-15",
+      "endDate": "2026-01-15",
       "timestamp": "2026-01-15T10:30:00.000Z"
+    },
+    {
+      "id": 1705329234001234,
+      "title": "Conference",
+      "description": "Annual company conference",
+      "author": "Jane Smith",
+      "startDate": "2026-01-20",
+      "endDate": "2026-01-22",
+      "timestamp": "2026-01-18T14:22:15.000Z"
     }
   ]
 }
 ```
+
+**Entry Fields:**
+- `id`: Unique identifier (timestamp + random + counter, prevents collisions)
+- `title`: Event title (required)
+- `description`: Optional detailed information
+- `author`: User who created the entry (auto-filled)
+- `startDate`: First day in YYYY-MM-DD format
+- `endDate`: Last day in YYYY-MM-DD format (can be same as startDate)
+- `timestamp`: ISO 8601 timestamp of when entry was created/modified
 
 Users are stored in `data/users.json`:
 ```json
@@ -268,10 +344,42 @@ Users are stored in `data/users.json`:
 - `GET users.php?action=generate_password` - Generate random password
 
 **Calendar (api.php)** - Requires authentication
-- `GET api.php?action=get` - Returns all events
-- `POST api.php?action=save` - Saves events (expects JSON body with `events` object)
+- `GET api.php?action=get` - Returns all events as JSON
+- `POST api.php?action=save` - Saves events (expects JSON body with `events` array)
+- `GET api.php?action=acquireLock` - Acquire atomic operation lock
+- `GET api.php?action=releaseLock` - Release atomic operation lock
+- `GET api.php?action=checkLock` - Check current lock status
 
-### Browser Compatibility
+**Settings (settings.php)** - Requires authentication
+- `GET settings.php?action=getTitle` - Get calendar title
+- `POST settings.php?action=setTitle` - Set calendar title (admin only)
+
+### Data Synchronization and Conflict Resolution
+
+**Atomic Operations with File Locking:**
+- Every save/delete operation acquires a lock before modifying data
+- Stale locks (>10 seconds old) are automatically taken over
+- Operations load fresh server data before applying changes to prevent conflicts
+
+**Edit Behavior:**
+- If editing an entry that was deleted by another user, the entry is restored with your edits
+- Last-edit-wins: If two users edit the same entry, the most recent save wins
+
+**Delete Behavior:**
+- If deleting an entry already deleted by another user, the operation succeeds silently
+- No alert shown - the desired outcome (entry deleted) is achieved
+
+**Data Integrity:**
+- Server is always the source of truth
+- localStorage is used as cache but never resurrects deleted data
+- All operations are atomic - no partial saves possible
+
+**Auto-Refresh:**
+- Client checks for updates every 30 seconds
+- Opening the add/edit modal loads fresh data immediately
+- Changes from other users appear automatically when modal is opened
+
+
 
 Works on all modern browsers:
 - Chrome/Edge 90+
