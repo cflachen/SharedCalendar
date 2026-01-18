@@ -900,20 +900,23 @@ async function atomicSaveToServer(change) {
                     const entryIndex = serverEvents.entries.findIndex(e => e.id === change.entryId);
                     
                     if (entryIndex === -1) {
-                        // Entry was deleted by another user
-                        await releaseLock();
-                        alert('This entry was deleted by another user. Your changes cannot be saved.');
-                        // Reload fresh data
-                        await loadEvents();
-                        return;
+                        // Entry was deleted by another user - restore it with the edits
+                        // We need to get the original author info, but since it was deleted,
+                        // we'll use the current user as the author
+                        const restoredEntry = {
+                            id: change.entryId,
+                            author: currentUserFullName,
+                            ...change.newData
+                        };
+                        serverEvents.entries.push(restoredEntry);
+                    } else {
+                        // Update the existing entry on server data
+                        serverEvents.entries[entryIndex] = {
+                            ...serverEvents.entries[entryIndex],
+                            ...change.newData,
+                            author: serverEvents.entries[entryIndex].author // Keep original author
+                        };
                     }
-                    
-                    // Update the entry on server data
-                    serverEvents.entries[entryIndex] = {
-                        ...serverEvents.entries[entryIndex],
-                        ...change.newData,
-                        author: serverEvents.entries[entryIndex].author // Keep original author
-                    };
                     mergedEvents = serverEvents;
                 } else {
                     // ADD: Just add to server data
