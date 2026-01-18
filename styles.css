@@ -500,9 +500,10 @@ header h1 {
         text-align: center;
     }
     
-    /* Wrapper for horizontal scrolling */
+    /* Allow horizontal scrolling on container */
     .container {
-        overflow-x: auto;
+        overflow-x: auto !important;
+        overflow-y: hidden;
         -webkit-overflow-scrolling: touch;
     }
     
@@ -511,7 +512,6 @@ header h1 {
         margin: 5px;
         grid-template-columns: repeat(7, 1fr);
         min-width: 500px; /* Force horizontal scroll to show all 7 days */
-        overflow: visible;
     }
     
     .calendar-header {
