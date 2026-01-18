@@ -422,6 +422,11 @@ function openDayModal(date) {
     displayEntriesForDate(date);
     
     modal.style.display = 'block';
+    
+    // Set focus to title field for quick data entry
+    setTimeout(() => {
+        document.getElementById('entryTitle').focus();
+    }, 100);
 }
 
 // Display entries for a date
