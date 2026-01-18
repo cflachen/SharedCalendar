@@ -32,16 +32,22 @@ A simple, collaborative web calendar where multiple users can add and edit entri
    ```
    /var/www/html/calendar/
    ├── index.html
+   ├── list.html
    ├── login.html
    ├── admin.html
    ├── styles.css
    ├── script.js
+   ├── list.js
    ├── api.php
    ├── auth.php
    ├── users.php
+   ├── settings.php
+   ├── setup.php                 # ⚠️ TEMPORARY - Delete after first login!
+   ├── fixfiles.php              # Optional utility script
    └── data/
        ├── events.json
        ├── users.json
+       ├── settings.json
        └── .htaccess
    ```
 
@@ -51,14 +57,18 @@ A simple, collaborative web calendar where multiple users can add and edit entri
    chmod 755 /var/www/html/calendar/data
    chmod 666 /var/www/html/calendar/data/events.json
    chmod 666 /var/www/html/calendar/data/users.json
+   chmod 666 /var/www/html/calendar/data/settings.json
    ```
 
-3. **First login:**
+3. **Initialize the application:**
+   - Open `http://your-domain.com/calendar/setup.php` in your browser
+   - Follow the setup wizard to create the admin account
+   - **CRITICAL:** After successful setup, delete `setup.php` from your server immediately for security
+
+4. **First login:**
    - Open `http://your-domain.com/calendar/login.html`
-   - Login with default admin credentials:
-     - **Username:** `admin`
-     - **Password:** `admin123`
-   - **IMPORTANT:** Change the admin password immediately!
+   - Login with the admin credentials you created in setup
+   - Change the admin password if desired
 
 ### Option 2: Free Hosting Platforms
 
@@ -84,22 +94,41 @@ A simple, collaborative web calendar where multiple users can add and edit entri
 
 ## Configuration
 
+### Critical Security: setup.php and fixfiles.php
+
+**setup.php** - ⚠️ MUST BE DELETED AFTER SETUP
+- Used only for initial application setup (creating first admin account)
+- Allows anyone to access it if left on the server
+- **DELETE IMMEDIATELY after first successful login**
+- If accidentally left on server, anyone can reset admin credentials
+- If deleted and you need to recover, see recovery procedure below
+
+**fixfiles.php** - Optional Recovery Utility
+- Can repair file permissions if needed
+- Can reset admin credentials if setup.php was already deleted
+- Should also be removed after troubleshooting
+
+**Recovery Procedure:**
+If you've lost access and deleted setup.php, upload fixfiles.php and access it at `http://your-domain.com/calendar/fixfiles.php` to reset admin credentials. Then delete fixfiles.php.
+
 ### Security Considerations
 
 For production use, consider adding:
 
-1. **Change default password** - Change the admin password immediately after first login
-2. **HTTPS** - Use SSL/TLS encryption for production deployment
-3. **Regular backups** - Regularly backup both `events.json` and `users.json` files
-4. **File permissions** - Ensure data directory is not publicly accessible (use .htaccess)
+1. **HTTPS** - Use SSL/TLS encryption for production deployment
+2. **Regular backups** - Regularly backup both `events.json` and `users.json` files
+3. **File permissions** - Ensure data directory is not publicly accessible (use .htaccess)
+4. **Update PHP** - Ensure your server runs the latest PHP version
+5. **Strong passwords** - Use the password generator when creating accounts
 
 ## User Management
 
-### Default Admin Account
+### Admin Account Setup
 
-- **Username:** `admin`
-- **Password:** `admin123`
-- **⚠️ CRITICAL:** Change this password immediately after first login!
+The initial admin account is created during setup.php. After setup:
+- Delete `setup.php` from your server immediately
+- Store the admin password securely
+- If needed later, use `fixfiles.php` to reset credentials
 
 ### Managing Users (Admin Only)
 
@@ -155,6 +184,8 @@ calendar/
 ├── auth.php            # Authentication system (login/logout/sessions)
 ├── users.php           # User management API (add/delete/change passwords)
 ├── settings.php        # Settings API (calendar title)
+├── setup.php           # ⚠️ TEMPORARY - Initial setup wizard (DELETE after first login!)
+├── fixfiles.php        # Optional recovery utility (delete after use)
 ├── data/               # Data storage directory
 │   ├── events.json     # JSON file storing all calendar entries
 │   ├── users.json      # JSON file storing user accounts
@@ -354,7 +385,21 @@ Users are stored in `data/users.json`:
 - `GET settings.php?action=getTitle` - Get calendar title
 - `POST settings.php?action=setTitle` - Set calendar title (admin only)
 
-### Data Synchronization and Conflict Resolution
+### Important Security Files
+
+**setup.php** - ⚠️ CRITICAL SECURITY NOTICE
+- Used only for initial application setup
+- Allows creating the admin account without needing default credentials
+- **MUST be deleted immediately after first successful login**
+- If left on the server, anyone can reset the admin password
+- To recover if accidentally deleted, use `fixfiles.php` to reset admin credentials
+
+**fixfiles.php** - Optional Utility Script
+- Used to repair file permissions if needed
+- Can reset admin credentials if setup.php was deleted
+- Also typically removed after troubleshooting
+
+
 
 **Atomic Operations with File Locking:**
 - Every save/delete operation acquires a lock before modifying data
