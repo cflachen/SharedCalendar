@@ -334,7 +334,7 @@ function createDayElement(day, date, isOtherMonth) {
     const dateString = formatDate(date);
     const allEntries = events.entries || [];
     const dayEntries = allEntries.filter(entry => {
-        return entry.startDate <= dateString && entry.endDate >= dateString;
+        return entryOverlapsDate(entry, dateString);
     });
     
     if (dayEntries.length > 0) {
@@ -393,6 +393,52 @@ function formatDate(date) {
 function formatDateDisplay(date) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
+}
+
+// Check if a date string represents an annual event (year is 0000)
+function isAnnualEvent(dateString) {
+    return dateString && dateString.startsWith('0000-');
+}
+
+// Convert annual date (0000-MM-DD) to a specific year (YYYY-MM-DD)
+// If no year provided, uses current year
+function annualDateToYear(dateString, year) {
+    if (!isAnnualEvent(dateString)) {
+        return dateString;
+    }
+    const targetYear = year || new Date().getFullYear();
+    return dateString.replace(/^0000/, targetYear.toString());
+}
+
+// Convert annual date (0000-MM-DD) to current year date (YYYY-MM-DD)
+function annualDateToCurrentYear(dateString) {
+    return annualDateToYear(dateString, new Date().getFullYear());
+}
+
+// Check if an entry overlaps with a given date, handling annual events
+function entryOverlapsDate(entry, dateString) {
+    let entryStart = entry.startDate;
+    let entryEnd = entry.endDate;
+    
+    // Extract the year from the dateString being checked (YYYY-MM-DD format)
+    const checkYear = dateString.substring(0, 4);
+    
+    // Convert annual dates to the year being checked for comparison
+    if (isAnnualEvent(entryStart)) {
+        entryStart = annualDateToYear(entryStart, parseInt(checkYear));
+    }
+    if (isAnnualEvent(entryEnd)) {
+        entryEnd = annualDateToYear(entryEnd, parseInt(checkYear));
+    }
+    
+    // Handle year-crossing dates (defensive check in case of manual JSON edits)
+    // If end < start in the same year, this is invalid - skip it
+    if (entryStart > entryEnd) {
+        console.warn('Invalid event date range: ' + entry.startDate + ' to ' + entry.endDate);
+        return false;
+    }
+    
+    return entryStart <= dateString && entryEnd >= dateString;
 }
 
 // Open modal for a specific day
@@ -480,7 +526,7 @@ function displayEntriesForDate(date, eventsOverride) {
     // Get all entries that overlap with this date
     const allEntries = entriesToUse.entries || [];
     const dayEntries = allEntries.filter(entry => {
-        return entry.startDate <= dateString && entry.endDate >= dateString;
+        return entryOverlapsDate(entry, dateString);
     });
     
     if (dayEntries.length === 0) {
@@ -494,12 +540,26 @@ function displayEntriesForDate(date, eventsOverride) {
         const entryDiv = document.createElement('div');
         entryDiv.className = 'entry-item';
         
-        const dateRange = entry.startDate === entry.endDate 
-            ? formatDateDisplay(new Date(entry.startDate + 'T00:00:00'))
-            : `${formatDateDisplay(new Date(entry.startDate + 'T00:00:00'))} - ${formatDateDisplay(new Date(entry.endDate + 'T00:00:00'))}`;
+        // Format dates, converting annual dates to the year being displayed
+        const displayYear = date.getFullYear();
+        const startDateStr = isAnnualEvent(entry.startDate) 
+            ? annualDateToYear(entry.startDate, displayYear)
+            : entry.startDate;
+        const endDateStr = isAnnualEvent(entry.endDate)
+            ? annualDateToYear(entry.endDate, displayYear)
+            : entry.endDate;
+        
+        const dateRange = startDateStr === endDateStr 
+            ? formatDateDisplay(new Date(startDateStr + 'T00:00:00'))
+            : `${formatDateDisplay(new Date(startDateStr + 'T00:00:00'))} - ${formatDateDisplay(new Date(endDateStr + 'T00:00:00'))}`;
+        
+        // Add annual badge if it's an annual event
+        const annualBadge = isAnnualEvent(entry.startDate) 
+            ? ' <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold;">Annual</span>'
+            : '';
         
         entryDiv.innerHTML = `
-            <h4 style="color: #000;">${escapeHtml(entry.title)}</h4>
+            <h4 style="color: #000;">${escapeHtml(entry.title)}${annualBadge}</h4>
             <p style="font-size: 0.9em; color: #333; margin: 5px 0;"><strong>Dates:</strong> ${dateRange}</p>
             ${entry.description ? `<p style="color: #000;">${escapeHtml(entry.description)}</p>` : ''}
             <div class="entry-meta" style="color: #666;">
@@ -521,11 +581,18 @@ function closeModal() {
     selectedDate = null;
     editingEntryId = null;
     
+    // Reset form and show entries list
+    document.getElementById('entryForm').reset();
+    document.getElementById('entriesList').style.display = 'block';
+    
     // Reset submit button text
     const submitBtn = document.querySelector('#entryForm button[type="submit"]');
     if (submitBtn) {
         submitBtn.textContent = 'Add';
     }
+    
+    // Reset annual checkbox
+    document.getElementById('entryAnnual').checked = false;
 }
 
 // Edit an entry
@@ -544,10 +611,22 @@ function editEntry(entryId) {
     // Populate form with entry data
     document.getElementById('entryTitle').value = entry.title;
     document.getElementById('entryDescription').value = entry.description || '';
-    document.getElementById('entryStartDate').value = entry.startDate;
+    
+    // Check if it's an annual event and convert to current year for display
+    const isAnnual = isAnnualEvent(entry.startDate);
+    let displayStartDate = entry.startDate;
+    let displayEndDate = entry.endDate;
+    
+    if (isAnnual) {
+        displayStartDate = annualDateToCurrentYear(entry.startDate);
+        displayEndDate = annualDateToCurrentYear(entry.endDate);
+    }
+    
+    document.getElementById('entryStartDate').value = displayStartDate;
     document.getElementById('entryStartDate').readOnly = false; // Allow editing start date
-    document.getElementById('entryEndDate').value = entry.endDate;
+    document.getElementById('entryEndDate').value = displayEndDate;
     document.getElementById('entryEndDate').readOnly = false;
+    document.getElementById('entryAnnual').checked = isAnnual;
     
     // Update modal title
     document.getElementById('modalTitle').textContent = 'Edit Entry';
@@ -575,6 +654,7 @@ async function handleFormSubmit(e) {
     const description = document.getElementById('entryDescription').value;
     const startDateInput = document.getElementById('entryStartDate').value;
     const endDateInput = document.getElementById('entryEndDate').value;
+    const isAnnual = document.getElementById('entryAnnual').checked;
     
     // Validate dates
     if (!startDateInput || !endDateInput) {
@@ -590,6 +670,26 @@ async function handleFormSubmit(e) {
         return;
     }
     
+    // Process dates - convert to 0000 year if annual
+    let finalStartDate = startDateInput;
+    let finalEndDate = endDateInput;
+    
+    if (isAnnual) {
+        // Check if the event crosses the year boundary (e.g., Dec 25 to Jan 5)
+        // This is not allowed for annual events since 0000-12-25 > 0000-01-05
+        const monthDayStart = startDateInput.substring(5); // MM-DD
+        const monthDayEnd = endDateInput.substring(5);     // MM-DD
+        
+        if (monthDayStart > monthDayEnd) {
+            alert('Annual events cannot span across the year boundary (e.g., December to January). Please create two separate annual events instead.');
+            return;
+        }
+        
+        // Replace year with 0000 for annual events
+        finalStartDate = startDateInput.replace(/^\d{4}/, '0000');
+        finalEndDate = endDateInput.replace(/^\d{4}/, '0000');
+    }
+    
     // Store the changes to apply
     const changeToApply = {
         isEdit: !!editingEntryId,
@@ -597,8 +697,8 @@ async function handleFormSubmit(e) {
         newData: {
             title: title,
             description: description,
-            startDate: startDateInput,
-            endDate: endDateInput,
+            startDate: finalStartDate,
+            endDate: finalEndDate,
             timestamp: new Date().toISOString()
         }
     };
@@ -606,11 +706,7 @@ async function handleFormSubmit(e) {
     // Save to server atomically - this will apply changes to fresh server data
     await saveEventsWithChange(changeToApply);
     
-    // Reset form
-    document.getElementById('entryForm').reset();
-    document.getElementById('entriesList').style.display = 'block';
-    
-    // Close modal immediately
+    // Close modal (which also resets form and shows entries list)
     closeModal();
     
     // Update display - renderCalendar is already called in atomicSaveToServer after merge

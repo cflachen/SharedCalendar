@@ -292,6 +292,16 @@ header h1 {
     color: #333;
 }
 
+.form-group label input[type="checkbox"] {
+    display: inline;
+    width: auto;
+    margin: 0 8px 0 0;
+    padding: 0;
+    vertical-align: middle;
+    cursor: pointer;
+    font-weight: normal;
+}
+
 .form-group input,
 .form-group textarea {
     width: 100%;
@@ -300,6 +310,13 @@ header h1 {
     border-radius: 5px;
     font-size: 1em;
     font-family: inherit;
+}
+
+.form-group input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    vertical-align: middle;
+    cursor: pointer;
 }
 
 .form-group input:focus,

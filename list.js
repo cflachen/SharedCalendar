@@ -200,16 +200,76 @@ function formatDate(date) {
     return `${year}-${month}-${day}`;
 }
 
+// Check if a date string represents an annual event (year is 0000)
+function isAnnualEvent(dateString) {
+    return dateString && dateString.startsWith('0000-');
+}
+
+// Convert annual date (0000-MM-DD) to a specific year (YYYY-MM-DD)
+// If no year provided, uses current year
+function annualDateToYear(dateString, year) {
+    if (!isAnnualEvent(dateString)) {
+        return dateString;
+    }
+    const targetYear = year || new Date().getFullYear();
+    return dateString.replace(/^0000/, targetYear.toString());
+}
+
+// Convert annual date (0000-MM-DD) to current year date (YYYY-MM-DD)
+function annualDateToCurrentYear(dateString) {
+    return annualDateToYear(dateString, new Date().getFullYear());
+}
+
+// Check if an entry overlaps with the current month (handles annual events)
+function entryOverlapsMonthWithAnnual(entry) {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    // First day of month
+    const monthStart = new Date(year, month, 1);
+    const monthStartStr = formatDate(monthStart);
+    
+    // Last day of month
+    const monthEnd = new Date(year, month + 1, 0);
+    const monthEndStr = formatDate(monthEnd);
+    
+    // Convert annual dates to the current viewing year for comparison
+    let entryStart = entry.startDate;
+    let entryEnd = entry.endDate;
+    
+    if (isAnnualEvent(entryStart)) {
+        entryStart = annualDateToYear(entryStart, year);
+    }
+    if (isAnnualEvent(entryEnd)) {
+        entryEnd = annualDateToYear(entryEnd, year);
+    }
+    
+    // Handle year-crossing dates (defensive check in case of manual JSON edits)
+    // If end < start in the same year, this is invalid - skip it
+    if (entryStart > entryEnd) {
+        console.warn('Invalid event date range: ' + entry.startDate + ' to ' + entry.endDate);
+        return false;
+    }
+    
+    // Check if entry overlaps with month
+    return entryStart <= monthEndStr && entryEnd >= monthStartStr;
+}
+
 // Render the event list
 function renderList() {
     const container = document.getElementById('eventListContent');
     const allEntries = events.entries || [];
     
     // Filter entries that overlap with current month
-    const monthEntries = allEntries.filter(entry => entryOverlapsMonth(entry));
+    const monthEntries = allEntries.filter(entry => entryOverlapsMonthWithAnnual(entry));
     
-    // Sort by start date
-    monthEntries.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    // Sort by start date (using the current viewing year for annual events)
+    const year = currentDate.getFullYear();
+    monthEntries.sort((a, b) => {
+        const aStart = isAnnualEvent(a.startDate) ? annualDateToYear(a.startDate, year) : a.startDate;
+        const bStart = isAnnualEvent(b.startDate) ? annualDateToYear(b.startDate, year) : b.startDate;
+        return aStart.localeCompare(bStart);
+    });
     
     if (monthEntries.length === 0) {
         container.innerHTML = '<div class="no-events">No events this month</div>';
@@ -219,15 +279,29 @@ function renderList() {
     let html = '<div class="event-list">';
     
     monthEntries.forEach(entry => {
-        const isMultiDay = entry.startDate !== entry.endDate;
+        // Convert annual dates to the current viewing year for display
+        const year = currentDate.getFullYear();
+        const displayStartDate = isAnnualEvent(entry.startDate) 
+            ? annualDateToYear(entry.startDate, year)
+            : entry.startDate;
+        const displayEndDate = isAnnualEvent(entry.endDate)
+            ? annualDateToYear(entry.endDate, year)
+            : entry.endDate;
+        
+        const isMultiDay = displayStartDate !== displayEndDate;
         const addedDate = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown';
+        
+        // Add annual badge if applicable
+        const annualBadge = isAnnualEvent(entry.startDate)
+            ? ' <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; font-weight: bold; margin-left: 8px;">Annual</span>'
+            : '';
         
         html += `
             <div class="event-list-item">
-                <div class="event-list-title">${escapeHtml(entry.title)}</div>
+                <div class="event-list-title">${escapeHtml(entry.title)}${annualBadge}</div>
                 <div class="event-list-dates">
-                    <span class="date-label">Start:</span> ${formatDateDisplay(entry.startDate)}
-                    ${isMultiDay ? `<br><span class="date-label">End:</span> ${formatDateDisplay(entry.endDate)}` : ''}
+                    <span class="date-label">Start:</span> ${formatDateDisplay(displayStartDate)}
+                    ${isMultiDay ? `<br><span class="date-label">End:</span> ${formatDateDisplay(displayEndDate)}` : ''}
                 </div>
                 ${entry.description ? `<div class="event-list-description">${escapeHtml(entry.description)}</div>` : ''}
                 <div class="event-list-author">Added by ${escapeHtml(entry.author || 'Unknown')} on ${addedDate}</div>
@@ -260,8 +334,17 @@ function editEntry(entryId) {
     // Find the entry to get its start date
     const entry = events.entries.find(e => e.id === entryId);
     if (entry) {
+        // For annual events, use the current year's date; otherwise use the entry's date
+        let entryDate;
+        if (isAnnualEvent(entry.startDate)) {
+            const currentYear = new Date().getFullYear();
+            const dateStr = annualDateToCurrentYear(entry.startDate);
+            entryDate = new Date(dateStr + 'T00:00:00');
+        } else {
+            entryDate = new Date(entry.startDate + 'T00:00:00');
+        }
+        
         // Navigate to calendar view on the entry's start date with edit mode
-        const entryDate = new Date(entry.startDate + 'T00:00:00');
         window.location.href = `index.html?year=${entryDate.getFullYear()}&month=${entryDate.getMonth()}&edit=${entryId}`;
     }
 }
