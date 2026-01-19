@@ -218,10 +218,16 @@ function buildEntryColorMap() {
     
     if (allEntries.length === 0) return;
     
+    const currentYear = currentDate.getFullYear();
+    
     // Sort entries by start date, then by ID for consistency
     const sortedEntries = [...allEntries].sort((a, b) => {
-        if (a.startDate !== b.startDate) {
-            return a.startDate.localeCompare(b.startDate);
+        // Convert annual dates to current year for comparison
+        const aStart = isAnnualEvent(a.startDate) ? annualDateToYear(a.startDate, currentYear) : a.startDate;
+        const bStart = isAnnualEvent(b.startDate) ? annualDateToYear(b.startDate, currentYear) : b.startDate;
+        
+        if (aStart !== bStart) {
+            return aStart.localeCompare(bStart);
         }
         return a.id - b.id;
     });
@@ -231,10 +237,18 @@ function buildEntryColorMap() {
         // Find all entries that overlap with this one
         const overlappingColors = new Set();
         
+        // Convert annual dates to current year for comparison
+        const entryStartCompare = isAnnualEvent(entry.startDate) ? annualDateToYear(entry.startDate, currentYear) : entry.startDate;
+        const entryEndCompare = isAnnualEvent(entry.endDate) ? annualDateToYear(entry.endDate, currentYear) : entry.endDate;
+        
         sortedEntries.forEach(other => {
             if (other.id !== entry.id && entryColorMap.has(other.id)) {
+                // Convert annual dates to current year for comparison
+                const otherStartCompare = isAnnualEvent(other.startDate) ? annualDateToYear(other.startDate, currentYear) : other.startDate;
+                const otherEndCompare = isAnnualEvent(other.endDate) ? annualDateToYear(other.endDate, currentYear) : other.endDate;
+                
                 // Check if entries overlap (date ranges intersect)
-                if (entry.startDate <= other.endDate && entry.endDate >= other.startDate) {
+                if (entryStartCompare <= otherEndCompare && entryEndCompare >= otherStartCompare) {
                     overlappingColors.add(entryColorMap.get(other.id));
                 }
             }
@@ -355,7 +369,19 @@ function createDayElement(day, date, isOtherMonth) {
             entryPreview.style.whiteSpace = 'normal';
             entryPreview.style.wordWrap = 'break-word';
             entryPreview.style.overflowWrap = 'break-word';
-            entryPreview.textContent = entry.title;
+            
+            // Add annual icon for annual events
+            if (isAnnualEvent(entry.startDate)) {
+                const annualIcon = document.createElement('span');
+                annualIcon.textContent = '🔁 ';
+                annualIcon.style.fontSize = '0.85em';
+                annualIcon.style.opacity = '0.9';
+                entryPreview.appendChild(annualIcon);
+            }
+            
+            const titleText = document.createTextNode(entry.title);
+            entryPreview.appendChild(titleText);
+            
             entryPreview.style.cursor = 'pointer';
             entryPreview.onclick = (e) => {
                 e.stopPropagation();
