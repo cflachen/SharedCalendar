@@ -34,7 +34,7 @@ async function checkAuthentication() {
         const data = JSON.parse(text);
         
         if (!data.success) {
-            window.location.href = 'login.html?redirect=index.html';
+            window.location.href = 'login.html?redirect=index.php';
             return;
         }
         
@@ -166,7 +166,7 @@ function setupEventListeners() {
         listViewBtn.addEventListener('click', () => {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            window.location.href = `list.html?year=${year}&month=${month}`;
+            window.location.href = `list.php?year=${year}&month=${month}`;
         });
     }
 

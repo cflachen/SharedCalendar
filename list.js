@@ -27,7 +27,7 @@ async function checkAuthentication() {
         const data = JSON.parse(text);
         
         if (!data.success) {
-            window.location.href = 'login.html?redirect=list.html';
+            window.location.href = 'login.html?redirect=list.php';
             return;
         }
         
@@ -50,7 +50,7 @@ async function checkAuthentication() {
         setupAutoRefresh();
     } catch (error) {
         console.error('Auth check failed:', error);
-        window.location.href = 'login.html?redirect=list.html';
+        window.location.href = 'login.html?redirect=list.php';
     }
 }
 
@@ -110,7 +110,7 @@ function setupEventListeners() {
     document.getElementById('calendarBtn').addEventListener('click', function() {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        window.location.href = `index.html?year=${year}&month=${month}`;
+        window.location.href = `index.php?year=${year}&month=${month}`;
     });
     
     // Logout button
@@ -345,7 +345,7 @@ function editEntry(entryId) {
         }
         
         // Navigate to calendar view on the entry's start date with edit mode
-        window.location.href = `index.html?year=${entryDate.getFullYear()}&month=${entryDate.getMonth()}&edit=${entryId}`;
+        window.location.href = `index.php?year=${entryDate.getFullYear()}&month=${entryDate.getMonth()}&edit=${entryId}`;
     }
 }
 
