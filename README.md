@@ -7,7 +7,8 @@ A simple, collaborative web calendar where multiple users can add and edit entri
 - 📅 Clean, interactive monthly calendar view with year/month navigation
 - 📋 List view of entries for the current month
 - ✏️ Edit and delete entries from both calendar and list views
-- 👥 Multi-user support with authentication and real-time synchronization
+- � **Annual events support** - Create recurring events like birthdays and holidays
+- �👥 Multi-user support with authentication and real-time synchronization
 - 🔐 Secure login system with password hashing
 - 🔧 Admin panel for user management (admins now land on calendar like regular users)
 - 📱 Fully responsive design with horizontal scrolling support on mobile
@@ -220,9 +221,31 @@ calendar/
    - **Title**: Brief description of the event (required)
    - **Start Date**: First day of the event (default is selected day)
    - **End Date**: Last day of the event (can be multi-day)
+   - **Repeat Annually**: Check this box to make the event repeat every year (e.g., birthdays, holidays)
    - **Description**: Optional detailed information
 4. Click "Add" to save
 5. The calendar updates immediately
+
+### Creating Annual Events
+
+Annual events (also called recurring events) repeat every year automatically:
+
+1. **When to use:** Perfect for birthdays, holidays, anniversaries, and other yearly events
+2. **How to create:**
+   - Check the "Repeat Annually" checkbox when creating or editing an event
+   - Select the date (the year doesn't matter - the event will appear every year)
+   - The event will show with a 🔁 icon in calendar view
+   - In list view, annual events display an "ANNUAL" badge
+
+3. **Important notes:**
+   - Annual events cannot span across the year boundary (e.g., December 31 to January 2)
+   - If you need a year-crossing event, create two separate annual events
+   - Annual events work in any year - navigate to 2027, 2028, etc. and they'll appear
+   - Internally stored with year "0000" but display with the current viewing year
+
+4. **Visual indicators:**
+   - Calendar view: 🔁 icon before the event title
+   - List view: Purple "ANNUAL" badge next to the event title
 
 ### Editing an Entry
 
@@ -333,6 +356,15 @@ Events are stored in `data/events.json` as a JSON object with entries array:
       "startDate": "2026-01-20",
       "endDate": "2026-01-22",
       "timestamp": "2026-01-18T14:22:15.000Z"
+    },
+    {
+      "id": 1705329234002345,
+      "title": "Mom's Birthday",
+      "description": "Don't forget the cake!",
+      "author": "John Doe",
+      "startDate": "0000-03-15",
+      "endDate": "0000-03-15",
+      "timestamp": "2026-01-19T09:15:30.000Z"
     }
   ]
 }
@@ -343,9 +375,14 @@ Events are stored in `data/events.json` as a JSON object with entries array:
 - `title`: Event title (required)
 - `description`: Optional detailed information
 - `author`: User who created the entry (auto-filled)
-- `startDate`: First day in YYYY-MM-DD format
-- `endDate`: Last day in YYYY-MM-DD format (can be same as startDate)
+- `startDate`: First day in YYYY-MM-DD format (use "0000" for annual events)
+- `endDate`: Last day in YYYY-MM-DD format (use "0000" for annual events)
 - `timestamp`: ISO 8601 timestamp of when entry was created/modified
+
+**Annual Events:**
+- Stored with year "0000" (e.g., "0000-03-15" for March 15 annually)
+- Display with the current viewing year when shown in calendar or list
+- Cannot cross year boundaries (December to January)
 
 Users are stored in `data/users.json`:
 ```json
