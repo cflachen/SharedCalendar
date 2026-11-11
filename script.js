@@ -195,6 +195,27 @@ function setupEventListeners() {
     if (entryForm) {
         entryForm.addEventListener('submit', handleFormSubmit);
     }
+
+    // Keep start <= end while editing: whichever field was just changed wins
+    const startInput = document.getElementById('entryStartDate');
+    const endInput = document.getElementById('entryEndDate');
+    if (startInput && endInput) {
+        startInput.addEventListener('change', () => {
+            if (startInput.value && endInput.value && startInput.value > endInput.value) {
+                endInput.value = startInput.value;
+            }
+        });
+        endInput.addEventListener('change', () => {
+            if (startInput.value && endInput.value && endInput.value < startInput.value) {
+                if (startInput.readOnly) {
+                    // New entry: start date is fixed to the clicked day
+                    endInput.value = startInput.value;
+                } else {
+                    startInput.value = endInput.value;
+                }
+            }
+        });
+    }
     
     // Close modal when clicking outside
     window.addEventListener('click', (e) => {
