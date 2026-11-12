@@ -233,69 +233,80 @@ let entryColorMap = new Map();
 // (each gives roughly 4.5:1 or better contrast with white text)
 const EVENT_COLORS = ['#1f6fd1', '#267d26', '#a86200', '#d6336c', '#8e44c8'];
 
-// Return the YYYY-MM-DD string for the day after the given YYYY-MM-DD date
-function addOneDay(dateStr) {
+// Return the YYYY-MM-DD string for the given YYYY-MM-DD date shifted by a number of days
+function addDays(dateStr, days) {
     const [y, m, d] = dateStr.split('-').map(Number);
-    const next = new Date(Date.UTC(y, m - 1, d + 1));
-    return next.toISOString().substring(0, 10);
+    const shifted = new Date(Date.UTC(y, m - 1, d + days));
+    return shifted.toISOString().substring(0, 10);
 }
 
-// Build a color map ensuring no two overlapping or back-to-back entries share the same color
+// Entries that can appear in the currently displayed month grid - rebuilt once per render
+let visibleEntries = [];
+
+// Build a color map ensuring no two overlapping or back-to-back entries share the same color.
+// Only entries near the displayed month are considered, so render time does not grow
+// with the total number of stored events.
 function buildEntryColorMap() {
     entryColorMap = new Map();
+    visibleEntries = [];
     const allEntries = events.entries || [];
     
     if (allEntries.length === 0) return;
     
     const currentYear = currentDate.getFullYear();
     
-    // Sort entries by start date, then by ID for consistency
-    const sortedEntries = [...allEntries].sort((a, b) => {
-        // Convert annual dates to current year for comparison
-        const aStart = isAnnualEvent(a.startDate) ? annualDateToYear(a.startDate, currentYear) : a.startDate;
-        const bStart = isAnnualEvent(b.startDate) ? annualDateToYear(b.startDate, currentYear) : b.startDate;
-        
-        if (aStart !== bStart) {
-            return aStart.localeCompare(bStart);
+    // Window: the displayed month plus two weeks on each side. This covers the
+    // neighbouring-month days shown in the grid and their back-to-back neighbours.
+    const monthStart = formatDate(new Date(currentYear, currentDate.getMonth(), 1));
+    const monthEnd = formatDate(new Date(currentYear, currentDate.getMonth() + 1, 0));
+    const windowStart = addDays(monthStart, -14);
+    const windowEnd = addDays(monthEnd, 14);
+    
+    // Convert dates once per entry (annual dates mapped to the displayed year).
+    // Annual events are always kept, since the grid may show days of two different years.
+    const candidates = [];
+    allEntries.forEach(entry => {
+        const annual = isAnnualEvent(entry.startDate);
+        const start = annual ? annualDateToYear(entry.startDate, currentYear) : entry.startDate;
+        const end = annual ? annualDateToYear(entry.endDate, currentYear) : entry.endDate;
+        if (annual || (start <= windowEnd && end >= windowStart)) {
+            visibleEntries.push(entry);
+            candidates.push({ entry, start, end, endPlusOne: addDays(end, 1) });
         }
-        return a.id - b.id;
     });
     
-    // For each entry, find overlapping entries and assign first available color
-    sortedEntries.forEach(entry => {
-        // Find all entries that overlap with this one
-        const overlappingColors = new Set();
-        
-        // Convert annual dates to current year for comparison
-        const entryStartCompare = isAnnualEvent(entry.startDate) ? annualDateToYear(entry.startDate, currentYear) : entry.startDate;
-        const entryEndCompare = isAnnualEvent(entry.endDate) ? annualDateToYear(entry.endDate, currentYear) : entry.endDate;
-        
-        sortedEntries.forEach(other => {
-            if (other.id !== entry.id && entryColorMap.has(other.id)) {
-                // Convert annual dates to current year for comparison
-                const otherStartCompare = isAnnualEvent(other.startDate) ? annualDateToYear(other.startDate, currentYear) : other.startDate;
-                const otherEndCompare = isAnnualEvent(other.endDate) ? annualDateToYear(other.endDate, currentYear) : other.endDate;
-                
-                // Check if entries overlap or touch (one ends the day before the other starts),
-                // so back-to-back events get different colors and the change is visible
-                if (entryStartCompare <= addOneDay(otherEndCompare) && addOneDay(entryEndCompare) >= otherStartCompare) {
-                    overlappingColors.add(entryColorMap.get(other.id));
-                }
+    // Sort by start date, then by ID for consistency
+    candidates.sort((a, b) => {
+        if (a.start !== b.start) {
+            return a.start.localeCompare(b.start);
+        }
+        return a.entry.id - b.entry.id;
+    });
+    
+    // For each entry, collect colors of already-colored entries that overlap or touch it
+    // (one ends the day before the other starts), so back-to-back events get different colors
+    const colored = [];
+    candidates.forEach(c => {
+        const usedColors = new Set();
+        colored.forEach(o => {
+            if (c.start <= o.endPlusOne && c.endPlusOne >= o.start) {
+                usedColors.add(entryColorMap.get(o.entry.id));
             }
         });
         
         // Assign first color not used by overlapping entries
         let colorIndex = 0;
-        while (overlappingColors.has(colorIndex) && colorIndex < EVENT_COLORS.length) {
+        while (usedColors.has(colorIndex) && colorIndex < EVENT_COLORS.length) {
             colorIndex++;
         }
         
         // If all colors used, cycle back (shouldn't happen often with 5 colors)
         if (colorIndex >= EVENT_COLORS.length) {
-            colorIndex = entry.id % EVENT_COLORS.length;
+            colorIndex = c.entry.id % EVENT_COLORS.length;
         }
         
-        entryColorMap.set(entry.id, colorIndex);
+        entryColorMap.set(c.entry.id, colorIndex);
+        colored.push(c);
     });
 }
 
@@ -375,9 +386,9 @@ function createDayElement(day, date, isOtherMonth) {
     dayElement.appendChild(dayNumber);
     
     // Get entries that overlap with this date
+    // (visibleEntries is the subset near the displayed month, built in buildEntryColorMap)
     const dateString = formatDate(date);
-    const allEntries = events.entries || [];
-    const dayEntries = allEntries.filter(entry => {
+    const dayEntries = visibleEntries.filter(entry => {
         return entryOverlapsDate(entry, dateString);
     });
     
