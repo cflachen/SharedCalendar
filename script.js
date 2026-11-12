@@ -230,9 +230,17 @@ function setupEventListeners() {
 let entryColorMap = new Map();
 
 // Color palette for events - stronger colors with good contrast for white text
-const EVENT_COLORS = ['#4da6ff', '#4dff4d', '#e6a800', '#ff6b9d', '#c77dff'];
+// (each gives roughly 4.5:1 or better contrast with white text)
+const EVENT_COLORS = ['#1f6fd1', '#267d26', '#a86200', '#d6336c', '#8e44c8'];
 
-// Build a color map ensuring no two overlapping entries share the same color
+// Return the YYYY-MM-DD string for the day after the given YYYY-MM-DD date
+function addOneDay(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d + 1));
+    return next.toISOString().substring(0, 10);
+}
+
+// Build a color map ensuring no two overlapping or back-to-back entries share the same color
 function buildEntryColorMap() {
     entryColorMap = new Map();
     const allEntries = events.entries || [];
@@ -268,8 +276,9 @@ function buildEntryColorMap() {
                 const otherStartCompare = isAnnualEvent(other.startDate) ? annualDateToYear(other.startDate, currentYear) : other.startDate;
                 const otherEndCompare = isAnnualEvent(other.endDate) ? annualDateToYear(other.endDate, currentYear) : other.endDate;
                 
-                // Check if entries overlap (date ranges intersect)
-                if (entryStartCompare <= otherEndCompare && entryEndCompare >= otherStartCompare) {
+                // Check if entries overlap or touch (one ends the day before the other starts),
+                // so back-to-back events get different colors and the change is visible
+                if (entryStartCompare <= addOneDay(otherEndCompare) && addOneDay(entryEndCompare) >= otherStartCompare) {
                     overlappingColors.add(entryColorMap.get(other.id));
                 }
             }
@@ -376,8 +385,17 @@ function createDayElement(day, date, isOtherMonth) {
         const entriesContainer = document.createElement('div');
         entriesContainer.className = 'day-entries';
         
-        // Sort entries by ID for consistent ordering
-        const sortedDayEntries = [...dayEntries].sort((a, b) => a.id - b.id);
+        // Sort entries so multi-day events keep a stable position across days:
+        // earlier start first, then longer events first, then by ID as tie-breaker
+        const cellYear = date.getFullYear();
+        const toYear = d => isAnnualEvent(d) ? annualDateToYear(d, cellYear) : d;
+        const sortedDayEntries = [...dayEntries].sort((a, b) => {
+            const aStart = toYear(a.startDate), bStart = toYear(b.startDate);
+            if (aStart !== bStart) return aStart.localeCompare(bStart);
+            const aEnd = toYear(a.endDate), bEnd = toYear(b.endDate);
+            if (aEnd !== bEnd) return bEnd.localeCompare(aEnd);
+            return a.id - b.id;
+        });
         
         // Show first 4 entries with color coding
         sortedDayEntries.slice(0, 4).forEach((entry, index) => {
